@@ -7,35 +7,34 @@ class DimaCeterchiMax final : public RangeMax {
 private:
     Index n = 0;
 
-    // arr is 1-indexed. bit1 and bit2 store interval maxima.
     vector<Value> arr;
     vector<Value> bit1;
     vector<Value> bit2;
 
     mutable OpCounters ops;
 
-    // Largest power of 2 dividing x.
+   
     static Index lowbit(Index x) {
         return x & (~x + 1);
     }
 
-    // Parent in the first tree.
+
     static Index parent1(Index x) {
         return x + lowbit(x);
     }
 
-    // Parent in the second tree.
+
     static Index parent2(Index x) {
         return x - lowbit(x);
     }
 
-    // Maximum operation.
+
     Value combine(Value a, Value b) const {
         ++ops.combines;
         return (a > b) ? a : b;
     }
 
-    // Initialize both trees from arr.
+ 
     void initialize() {
         bit1.assign(n + 1, NEG_INF);
         bit2.assign(n + 1, NEG_INF);
@@ -45,7 +44,7 @@ private:
             bit2[i] = arr[i];
         }
 
-        // Build T1.
+
         for (Index i = 1; i <= n; ++i) {
             const Index p = parent1(i);
             if (p <= n) {
@@ -53,7 +52,6 @@ private:
             }
         }
 
-        // Build T2.
         for (Index i = n; i >= 1; --i) {
             const Index p = parent2(i);
             if (p >= 1) {
@@ -64,7 +62,7 @@ private:
         ops.node_writes += 2 * n;
     }
 
-    // Validate a non-empty or empty (l == r + 1) range.
+
     void validate_range(Index l, Index r) const {
         if (l < 1 || l > n + 1 || r > n || l > r + 1) {
             throw out_of_range("Invalid query range");
@@ -74,7 +72,7 @@ private:
 public:
     DimaCeterchiMax() = default;
 
-    // Build the structure from a zero-indexed input vector.
+
     void build(const vector<Value>& a) override {
         n = a.size();
         arr.assign(n + 1, 0);
@@ -90,12 +88,11 @@ public:
         ops.reset();
     }
 
-    // Return the number of elements.
+
     Index size() const override {
         return n;
     }
 
-    // Return the current value at 1-based position i.
     Value get(Index i) const override {
         if (i < 1 || i > n) {
             throw out_of_range("Invalid index");
@@ -105,8 +102,7 @@ public:
         return arr[i];
     }
 
-    // Return the maximum in the 1-based inclusive range [l, r].
-    // The empty range [l, l-1] returns NEG_INF.
+
     Value query_max(Index l, Index r) const override {
         validate_range(l, r);
 
@@ -118,21 +114,21 @@ public:
         Index x = l;
         Index y = r;
 
-        // Traverse from the left using T2.
+
         while (parent1(x) <= r) {
             ++ops.node_reads;
             ans = combine(ans, bit2[x]);
             x = parent1(x);
         }
 
-        // Traverse from the right using T1.
+
         while (parent2(y) >= l) {
             ++ops.node_reads;
             ans = combine(ans, bit1[y]);
             y = parent2(y);
         }
 
-        // The remaining uncovered interval must be one element.
+
         if (x != y) {
             throw logic_error("Invalid query decomposition");
         }
@@ -142,7 +138,7 @@ public:
         return ans;
     }
 
-    // Assign arr[p] = v. Supports both increases and decreases.
+
     void assign(Index p, Value v) override {
         if (p < 1 || p > n) {
             throw out_of_range("Invalid update index");
@@ -155,9 +151,7 @@ public:
         arr[p] = v;
         ++ops.node_writes;
 
-        // -----------------------------
-        // Update T1.
-        // -----------------------------
+
         Index i = p;
         Index leftPos = p - 1;
         Index rightPos = p + 1;
@@ -168,7 +162,7 @@ public:
         while (i <= n) {
             const Index x = i - lowbit(i) + 1;
 
-            // Collect complete stored blocks to the left of p.
+
             while (leftPos >= x) {
                 const Index blockLeft = parent2(leftPos) + 1;
 
@@ -181,7 +175,6 @@ public:
                 }
             }
 
-            // Collect complete stored blocks to the right of p.
             while (rightPos < i) {
                 const Index blockRight = min(n, parent1(rightPos) - 1);
 
@@ -194,14 +187,14 @@ public:
                 }
             }
 
-            // Include i if it has not already been covered.
+
             if (rightPos == i) {
                 ++ops.node_reads;
                 rightMax = combine(rightMax, arr[i]);
                 rightPos = i + 1;
             }
 
-            // Recalculate the interval represented by T1[i].
+
             bit1[i] = combine(combine(leftMax, v), rightMax);
             ++ops.node_writes;
             ++ops.recomputations;
@@ -209,9 +202,6 @@ public:
             i = parent1(i);
         }
 
-        // -----------------------------
-        // Update T2.
-        // -----------------------------
         i = p;
         leftPos = p - 1;
         rightPos = p + 1;
@@ -222,7 +212,8 @@ public:
         while (i >= 1) {
             const Index y = min(n, i + lowbit(i) - 1);
 
-            // Collect complete stored blocks to the left of p.
+
+            
             while (leftPos >= i) {
                 const Index blockLeft = parent2(leftPos) + 1;
 
@@ -235,14 +226,12 @@ public:
                 }
             }
 
-            // Include i if it has not already been covered.
             if (leftPos == i) {
                 ++ops.node_reads;
                 leftMax = combine(leftMax, arr[i]);
                 leftPos = i - 1;
             }
-
-            // Collect complete stored blocks to the right of p.
+            
             while (rightPos <= y) {
                 const Index blockRight = min(n, parent1(rightPos) - 1);
 
@@ -255,7 +244,6 @@ public:
                 }
             }
 
-            // Recalculate the interval represented by T2[i].
             bit2[i] = combine(combine(leftMax, v), rightMax);
             ++ops.node_writes;
             ++ops.recomputations;
@@ -264,19 +252,15 @@ public:
         }
     }
 
-    // Return operation counters.
     const OpCounters& counters() const override {
         return ops;
     }
 
-    // Reset operation counters.
     void reset_counters() override {
         ops.reset();
     }
 
-    // Check structural invariants F1, F2 and F3.
     bool check_invariants(string* why = nullptr) const override {
-        // F3: stored array contains no reserved identity value.
         for (Index i = 1; i <= n; ++i) {
             if (arr[i] == NEG_INF) {
                 if (why) {
@@ -286,7 +270,6 @@ public:
             }
         }
 
-        // F1: T1[i] stores max(arr[i-lowbit(i)+1 ... i]).
         for (Index i = 1; i <= n; ++i) {
             Value expected = NEG_INF;
             const Index left = i - lowbit(i) + 1;
@@ -303,7 +286,6 @@ public:
             }
         }
 
-        // F2: T2[i] stores max(arr[i ... min(n, i+lowbit(i)-1)]).
         for (Index i = 1; i <= n; ++i) {
             Value expected = NEG_INF;
             const Index right = min(n, i + lowbit(i) - 1);
@@ -327,4 +309,4 @@ public:
     }
 };
 
-#endif // DIMA_CETERCHI_MAX_HPP
+#endif 
