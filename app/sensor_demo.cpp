@@ -12,7 +12,13 @@ int main()
     SegTree<GcdMonoid> calibration;
     calibration.build({6, 12, 18, 24});
 
-    readings.assign(4, Value{12}); // Change the fourth reading from 18 to 12.
+    Index position;
+    Value new_reading;
+    if (!(std::cin >> position >> new_reading))
+    {
+        return 1;
+    }
+    readings.assign(position, new_reading);
     calibration.assign(1, Value{5}); // Change the first calibration value from 6 to 5.
 
     MaxCount result = readings.query_max_count(1, 4);
