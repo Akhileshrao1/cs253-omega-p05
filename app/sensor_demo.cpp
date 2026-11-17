@@ -12,18 +12,62 @@ int main()
     SegTree<GcdMonoid> calibration;
     calibration.build({6, 12, 18, 24});
 
-    Index position;
-    Value new_reading;
-    if (!(std::cin >> position >> new_reading))
+    int command_count;
+    if (!(std::cin >> command_count) || command_count < 0)
     {
         return 1;
     }
-    readings.assign(position, new_reading);
-    calibration.assign(1, Value{5}); // Change the first calibration value from 6 to 5.
 
-    MaxCount result = readings.query_max_count(1, 4);
+    for (int i = 0; i < command_count; ++i)
+    {
+        char command;
+        if (!(std::cin >> command))
+        {
+            return 1;
+        }
 
-    std::cout << "Maximum: " << result.max << '\n';
-    std::cout << "Count: " << result.count << '\n';
-    std::cout << "GCD: " << calibration.query_gcd(1, 4) << '\n';
+        switch (command)
+        {
+        case 'R':
+        case 'C':
+        {
+            Index position;
+            Value value;
+            if (!(std::cin >> position >> value) ||
+                position == 0 || position > readings.size())
+            {
+                return 1;
+            }
+
+            if (command == 'R')
+            {
+                readings.assign(position, value);
+            }
+            else
+            {
+                calibration.assign(position, value);
+            }
+            break;
+        }
+
+        case 'Q':
+        {
+            Index left, right;
+            if (!(std::cin >> left >> right) ||
+                left == 0 || left > right || right > readings.size())
+            {
+                return 1;
+            }
+
+            MaxCount result = readings.query_max_count(left, right);
+            std::cout << result.max << ' ' << result.count << ' '
+                      << calibration.query_gcd(left, right) << '\n';
+            break;
+        }
+
+        default:
+            std::cerr << "Unknown command: " << command << '\n';
+            return 1;
+        }
+    }
 }
