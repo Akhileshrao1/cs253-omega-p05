@@ -1,17 +1,44 @@
 #include <iostream>
-
+#include <vector>
 #include "../src/structA/segment_tree.hpp"
 #include "../src/structA/max_count_monoid.hpp"
 #include "../src/structA/gcd_monoid.hpp"
 
 int main()
 {
+    int sensor_count;
+    if (!(std::cin >> sensor_count) || sensor_count <= 0)
+    {
+        std::cerr << "Expected a positive sensor count\n";
+        return 1;
+    }
+
+    std::vector<Value> initial_readings(sensor_count);
+    std::vector<Value> initial_calibration(sensor_count);
+
+    for (Value &reading : initial_readings)
+    {
+        if (!(std::cin >> reading))
+        {
+            std::cerr << "Missing or invalid sensor reading\n";
+            return 1;
+        }
+    }
+
+    for (Value &factor : initial_calibration)
+    {
+        if (!(std::cin >> factor))
+        {
+            std::cerr << "Missing or invalid calibration factor\n";
+            return 1;
+        }
+    }
+
     SegTree<MaxCountMonoid> readings;
-    readings.build({6, 12, 12, 18});
+    readings.build(initial_readings);
 
     SegTree<GcdMonoid> calibration;
-    calibration.build({6, 12, 18, 24});
-
+    calibration.build(initial_calibration);
     int command_count;
     if (!(std::cin >> command_count) || command_count < 0)
     {
