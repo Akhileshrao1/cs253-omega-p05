@@ -16,17 +16,17 @@
 
 ## 1. Executive summary
 
-We study an array of sensor readings that receives point assignments, including assignments that lower a value. The application asks for (1) the maximum and its frequency on an interval and (2) the greatest common divisor (GCD) on an interval. The project compares a segment tree, the two-tree Dima–Ceterchi Fenwick range-maximum design, a prefix-maximum-only Fenwick baseline, and a plain-array oracle.
+We study two separate arrays: sensor readings, used for range maximum, and calibration factors, used for range GCD. Point assignments may lower a value. Structure A is a segment tree supporting `query_max`, `query_max_count`, and `query_gcd` on the appropriate arrays. Structure B is the two-tree Dima–Ceterchi structure supporting range maximum only; it does not return the maximum's frequency. We compare A and B on identical `query_max` workloads, evaluate A's `query_max_count` and `query_gcd` separately against the oracle, and evaluate the prefix-only Fenwick baseline with its actual `query_prefix_max` interface.
 
-Our main prediction is calculated in abstract work units, not milliseconds. At $n=1{,}000{,}000$, the tree height is about 20 levels. Thus a segment-tree assignment recomputes about 20 ancestors, while a range query visits a number of canonical nodes proportional to 20. By contrast, the array oracle reads exactly $w$ elements for a width-$w$ query. The prefix-maximum Fenwick baseline has logarithmic prefix queries and updates only while values increase; a decrease can invalidate stored maxima and therefore requires a rebuild or another correct recovery strategy. The two-tree Fenwick range-maximum structure is expected to answer a range maximum in logarithmic work and to support decreases, but its update cost depends on how many stored blocks must be recomputed. We will calculate the structural growth first; later measurements can validate the prediction and estimate machine-specific constants.
+Our main prediction is calculated in abstract work units, not milliseconds. At $n=1{,}000{,}000$, the tree height is about 20 levels. Thus a segment-tree assignment recomputes about 20 ancestors, while a range query visits a number of canonical nodes proportional to 20. By contrast, the array oracle reads exactly $w$ elements for a width-$w$ query. A decrease can invalidate prefix-maximum summaries, so the baseline must rebuild affected cells; the amount of repair depends on the update sequence. The two-tree Fenwick range-maximum structure is expected to answer a range maximum in logarithmic work and to support decreases, but its update cost depends on how many stored blocks must be recomputed. We will calculate the structural growth first; later measurements can validate the prediction and estimate machine-specific constants.
 
 The assignment requires a cost model before measuring, mean timing over at least five runs with spread, measurements against interval width and update mix, and an explanation of any regime where the Fenwick design wins. This draft supplies an analytical prediction and a separate future experiment plan. No code-running timings or profiler claims are presented as predictions.
 
 ## 2. Problem, interface, and correctness reference
 
-The array has length $n$. A range is a **zero-based inclusive** interval $[l, r]$, with $0 \le l \le r < n$. Values are assumed to be non-negative integers unless the implementation documents a different input domain. An assignment sets $A[i] = x$; it is not an increment. Assignments may increase, decrease, or leave a value unchanged.
+The readings array and calibration array each have length $n$. Positions and nonempty ranges follow [the shared interface](INTERFACE.md): positions are **1-based** and ranges are **closed** $[l,r]$, where $1\le l\le r\le n$. The interface also permits an empty range with $l=r+1$; the width formulas in this report apply to nonempty ranges. An assignment sets the selected position to a value; it is not an increment. Assignments may increase, decrease, or leave a value unchanged. Readings and calibration factors are distinct arrays and are updated and queried through their respective structures.
 
-For each range, `range_max(l, r)` returns $(m, c)$, where $m$ is the largest value and $c$ is the number of positions attaining it. `range_gcd(l, r)` returns $\gcd(A[l], \ldots, A[r])$. The plain array scans the interval and serves as the correctness oracle for differential testing; it is not expected to be fast.
+For a readings range, `query_max(l, r)` returns only the largest value, while `query_max_count(l, r)` returns $(m,c)$: the maximum and its frequency. Structure B implements `query_max`; it is not required to implement `query_max_count`. For a calibration range, `query_gcd(l, r)` returns its GCD. The plain-array oracle supports these operations by scanning the corresponding input array and serves as the correctness reference.
 
 ### Aggregate operation for maximum and frequency
 
@@ -43,33 +43,34 @@ $$
 
 Its identity is $e = (-\infty, 0)$. It is associative because combining summaries is exactly the summary (maximum, its multiplicity) of the concatenation of the represented segments, and concatenation is associative. This monoid supports segment-tree range aggregation without requiring an inverse. The implementation must ensure that its chosen representation of $-\infty$ cannot collide with a valid sensor value.
 
-For GCD, combine with $\gcd(a,b)$ and identity $0$; $\gcd(0,x)=|x|$. GCD is associative, so the same segment-tree shape can use this monoid separately.
+For GCD, combine with $\gcd(a,b)$ and identity $0$; $\gcd(0,x)=|x|$. GCD is associative, so Structure A can use the same segment-tree shape separately over the calibration array.
 
 ### Why prefix subtraction does not give a range maximum
 
-For sums, $\operatorname{sum}(l,r) = \operatorname{prefix}(r) - \operatorname{prefix}(l-1)$ works because addition has an inverse. Maximum has no inverse: knowing the maximum of $[0,r]$ and $[0,l-1]$ does not reveal the maximum after removing the prefix. For example, prefix maxima $[9,9]$ are compatible with a suffix whose maximum is either $9$ or $2$. Thus a conventional prefix-max Fenwick tree cannot answer arbitrary range maxima by subtraction. The two-tree design uses a different range-query construction.
+For sums, $\mathrm{sum}(l,r) = \mathrm{prefix}(r) - \mathrm{prefix}(l-1)$ works because addition has an inverse. Maximum has no inverse: knowing the maximum of $[0,r]$ and $[0,l-1]$ does not reveal the maximum after removing the prefix. For example, prefix maxima $[9,9]$ are compatible with a suffix whose maximum is either $9$ or $2$. Thus a conventional prefix-max Fenwick tree cannot answer arbitrary range maxima by subtraction. The two-tree design uses a different range-query construction.
 
 ```mermaid
-flowchart LR
-  Q[Range request l..r] --> M[Maximum and count]
-  Q --> G[Range GCD]
-  U["Point assignment A[i] = x"] --> A["Segment tree: update summaries"]
-  U --> B[Two-tree Fenwick: repair affected blocks]
-  U --> P[Prefix-max baseline: increases only, or rebuild after decrease]
-  O[Plain array] --> V[Oracle for differential checks]
+graph LR
+  Q["Readings range [l,r]"] --> M["query_max: maximum"]
+  Q --> C["query_max_count: maximum and frequency, Structure A"]
+  G["Calibration range [l,r]"] --> H["query_gcd, Structure A"]
+  U["Point assignment"] --> A["Structure A segment tree"]
+  U --> B["Structure B two-tree Fenwick, maximum only"]
+  U --> P["Prefix baseline: query_prefix_max"]
+  O["Plain-array oracle"] --> V["Differential checks"]
 ```
 
 ## 3. Structures included in the comparison
 
 | Label | Purpose | Expected supported work | Correctness / scope note |
 |---|---|---|---|
-| `SEG-MAX` | Segment tree over $(maximum, count)$ | Range maximum and count; point assignment | $O(\log n)$ combine/visit work per query or assignment |
-| `SEG-GCD` | Segment tree over GCD | Range GCD; point assignment | $O(\log n)$ combine/visit work per query or assignment |
-| `DC-MAX` | Dima–Ceterchi two-tree Fenwick range-maximum design | Range maximum; point assignments including decreases | Count query steps, updated blocks, and recomputation work; confirm count support in the implemented variant |
-| `BIT-PREFIX-MAX` | Prefix-maximum-only Fenwick baseline | Prefix maximum; range use only where valid, or by documented rebuild strategy | Increase-only update rule is not correct for arbitrary decreases |
-| `ARRAY` | Plain-array oracle | All requested operations | $O(w)$ range scan for width $w=r-l+1$; assignment $O(1)$ |
+| `SEG-MAX-COUNT` | Structure A segment tree over $(maximum, count)$ for readings | `query_max`, `query_max_count`; point assignment | $O(\log n)$ combines/visits per query or assignment |
+| `SEG-GCD` | Structure A segment tree over calibration factors | `query_gcd`; point assignment | $O(\log n)$ combines per query or assignment, with value-dependent GCD work |
+| `DC-MAX` | Structure B Dima–Ceterchi two-tree Fenwick | `query_max`; point assignments including decreases | Compare with A on identical max-only queries; count steps and repair work |
+| `BIT-PREFIX-MAX` | Prefix-maximum Fenwick baseline | `query_prefix_max`; point assignment | Compare on prefix queries; do not treat it as an arbitrary-range max structure |
+| `ARRAY` | Plain-array oracle over readings and calibration factors | Oracle versions of the interface operations | $O(w)$ scan for a nonempty range of width $w$; assignment $O(1)$ |
 
-**GCD scope:** The assignment specifies the segment tree for both monoids and describes Structure B as a range-maximum structure. Unless the team has implemented and proved an additional valid GCD method, do not report `DC-MAX` or `BIT-PREFIX-MAX` as supporting range GCD. Likewise, any `BIT-PREFIX-MAX` range result produced after a decrease must be labeled with the actual rebuild/recovery work; a stale prefix maximum is incorrect.
+**Comparison scope:** Structure B returns a maximum value, not a frequency; only compare `query_max` on identical traces between A and B. Measure `query_max_count` for A and the oracle separately. Structure B and the prefix baseline do not support range GCD. Compare the prefix baseline using `query_prefix_max` on matching prefix endpoints. Its invariant must remain correct after decreases; the agreed interface rebuilds affected cells and increments the recomputation counter.
 
 ## 4. D6 — Analyst's predicted-cost model
 
@@ -80,9 +81,10 @@ For each operation, record both elapsed time and implementation-independent work
 - $n$ = number of array elements;
 - $w = r-l+1$ = queried range width;
 - $Q$ = number of range queries; $U$ = number of point assignments;
+- $V_{max}$ = largest absolute calibration factor (the $V$ used in the GCD bound);
 - $p$ = fraction of assignments that are decreases; $1-p$ is the increase fraction (unchanged assignments are tracked separately);
 - $C$ = number of aggregate combines; $V$ = number of tree/Fenwick cells visited;
-- $R$ = number of stored summaries recomputed during a `DC-MAX` assignment; $S$ = lower-level scan/merge steps used by those recomputations;
+- $R_i$ = the per-assignment delta of `OpCounters.recomputations`; $S_i$ = repair work from per-assignment deltas of `node_reads`, `node_writes`, and `combines`;
 - $B$ = number of cells rebuilt in the prefix-only baseline;
 - $M$ = bytes allocated for the structure, excluding the shared input unless reported separately.
 
@@ -98,17 +100,18 @@ where the coefficients are implementation- and machine-dependent and `ε` includ
 
 | Variant / operation | Predicted work | Asymptotic prediction | Important measured counters |
 |---|---:|---:|---|
-| `SEG-MAX` range query | Visit canonical segment nodes and combine summaries; at most a constant number per tree level | $O(\log n)$ | nodes visited, combines |
-| `SEG-MAX` assignment | Replace leaf and recompute ancestors | $O(\log n)$ | ancestors recomputed, combines |
-| `SEG-GCD` range query | Visit canonical segment nodes and combine GCDs | $O(\log n)$ tree combines; each GCD has value-dependent Euclid cost | nodes, GCD calls, Euclid iterations |
-| `SEG-GCD` assignment | Replace leaf and recompute ancestors | $O(\log n)$ GCD calls; value-dependent Euclid work | ancestors, GCD calls, Euclid iterations |
-| `DC-MAX` range query | Walk the two Fenwick structures according to the published algorithm | $O(\log n)$ steps, as required by project D2 | cells visited, comparisons, combines |
-| `DC-MAX` assignment | Update affected blocks and repair summaries | Counted as `R` recomputations plus `S` internal work; prediction to verify is at most polylogarithmic, with adversarial decreases stressing the worst case | affected cells, summaries recomputed, scan/merge steps |
-| `BIT-PREFIX-MAX` prefix query | Follow Fenwick prefix decomposition | $O(\log n)$ | cells visited, comparisons |
-| `BIT-PREFIX-MAX` increase assignment | Propagate through update path | $O(\log n)$ | cells changed |
-| `BIT-PREFIX-MAX` decrease assignment | Correctness requires recovery; a full rebuild is $O(n)$ if that is the chosen policy | $O(n)$ per rebuild, plus the triggering update | rebuilt cells, rebuild count |
-| `ARRAY` range query | Inspect each element in the interval | $\Theta(w)$ | elements inspected |
-| `ARRAY` assignment | Write one element | $\Theta(1)$ | writes |
+| `SEG-MAX-COUNT` `query_max` | Visit canonical segment nodes and combine max-count summaries; at most a constant number per tree level | $O(\log n)$ | `node_reads`, `combines` |
+| `SEG-MAX-COUNT` `query_max_count` | Same traversal, returning maximum and frequency | $O(\log n)$ | `node_reads`, `combines` |
+| `SEG-MAX-COUNT` assignment | Replace readings leaf and recompute ancestors | $O(\log n)$ | `node_reads`, `node_writes`, `combines` |
+| `SEG-GCD` `query_gcd` | Visit canonical segment nodes and combine calibration GCDs | $O(\log n+\log V_{max})$ total per D3 | `node_reads`, `combines`, `gcd_steps` |
+| `SEG-GCD` assignment | Replace leaf and recompute ancestors | $O(\log n)$ GCD calls; value-dependent Euclid work | `node_reads`, `node_writes`, `combines`, `gcd_steps` |
+| `DC-MAX` `query_max` | Walk the two Fenwick structures according to the published algorithm | $O(\log n)$ steps, as required by project D2 | `node_reads`, `combines` |
+| `DC-MAX` assignment | Update affected blocks and repair summaries | Count as $R_i+S_i$ using per-operation counter deltas; D2 supplies the bound, and adversarial decreases target its worst case | `recomputations`, `node_reads`, `node_writes`, `combines` |
+| `BIT-PREFIX-MAX` `query_prefix_max` | Follow Fenwick prefix decomposition | $O(\log n)$ | `node_reads`, `combines` |
+| `BIT-PREFIX-MAX` increase assignment | Propagate through update path | $O(\log n)$ | `node_reads`, `node_writes`, `combines` |
+| `BIT-PREFIX-MAX` decrease assignment | Recompute every affected prefix summary; let $B_i$ be the number of cells rebuilt for decrease $i$ | $O(B_i)$, with $B_i\le n$; worst case $O(n)$ | `recomputations`, `node_reads`, `node_writes`, `combines` |
+| `ARRAY` range query | Inspect each element in the interval | $\Theta(w)$ | `node_reads` |
+| `ARRAY` assignment | Write one element | $\Theta(1)$ | `node_writes` |
 
 For `DC-MAX`, the assignment gives the correctness and $O(\log n)$ query target but does not itself state a point-update worst-case formula. The report must not silently claim a tighter bound than the implemented Dima–Ceterchi update procedure proves. D2 should establish that bound; the benchmark should then test its constants and worst-case behavior. The counters $R$ and $S$ make the model useful even if the update has multiple nested loops.
 
@@ -132,27 +135,31 @@ $$
 
 If widths are approximately uniform at $w$, this is $\Theta(U+Qw)$. This predicts that the oracle can be competitive for very short intervals despite its linear worst case, and should lose as intervals widen.
 
-For `DC-MAX`, use observed counters in the explanatory model:
+For `DC-MAX`, derive per-operation counter deltas from the shared `OpCounters` and use them in the explanatory model:
 
 $$
 W_{DC-MAX}=\sum_{j=1}^{Q} V^{(q)}_j + \sum_{i=1}^{U}\left(R_i+S_i\right).
 $$
 
-The query target is logarithmic. Update behavior is reported as the distribution and maximum of $R_i$ and $S_i$, split by increase/decrease and workload. This exposes whether repeated decreases cause substantially more repair work than increases.
+The query target is logarithmic. Update behavior is reported as the distribution and maximum of $R_i$ and $S_i$, split by increase/decrease and workload. $S_i$ summarizes the `node_reads`, `node_writes`, and `combines` performed while repairing an update; do not add it to $R_i$ if the implementation's counter definition already includes the same work. This exposes whether repeated decreases cause substantially more repair work than increases.
 
-For the prefix-only baseline, a policy that rebuilds after each decrease has approximate work:
+For the prefix-only baseline, let $B_i$ be the number of Fenwick cells recomputed for decreasing assignment $i$. Its work is:
 
 $$
-W_{BIT-PREFIX-MAX}=\Theta(Q\log n + U_{inc}\log n + Dn),
+W_{BIT-PREFIX-MAX}=O(Q\log n + U_{inc}\log n + \sum_{i=1}^{D} B_i),
 $$
 
-where `D` is the number of decreases that trigger a full rebuild. If the implementation uses a different recovery method, substitute its actual counters and prove its correctness. This baseline is included to demonstrate the limitation, not to imply that the rebuild approach is the recommended solution.
+where `D` is the number of decreasing assignments, and $B_i$ is the actual number of affected cells rebuilt for decrease $i$. The worst case is $B_i=O(n)$, but use the implementation's `recomputations` counter rather than assuming every decrease rebuilds all $n$ cells. This baseline is included to expose the work caused by decreases, not to imply that it supports arbitrary range maximum.
 
 ### 4.4 GCD range-query bound and value dependence
 
-The segment tree uses $O(\log n)$ canonical summaries for a range query. Each summary combination invokes Euclid's algorithm. For $V=\max_i |A[i]|$, one GCD takes $O(\log V)$ divisions in the general worst case, giving the straightforward upper bound $O(\log n \cdot \log V)$ for GCD work.
+Let $g_0$ be the first positive running GCD while the query folds the canonical segment summaries in the implementation's merge order. When the next summary value $x_j$ is combined, set $g_j=\gcd(g_{j-1},x_j)$. Within one Euclid call, the positive remainders shrink geometrically every two steps, so that call takes $O(1+\log(g_{j-1}/g_j))$ divisions. If the call leaves the running GCD unchanged, its work is constant; whenever it lowers the running GCD, the ratio contributes to a telescoping sum:
 
-The tighter project target $O(\log n + \log V)$ relies on telescoping: as the range is covered by successively combined segment summaries, a nontrivial GCD strictly decreases by at least a factor of two after at most two Euclid steps. Therefore the value-dependent Euclid work accumulated across the query is bounded by $O(\log V)$, in addition to $O(\log n)$ tree traversal and combine overhead. The team should include the full proof in D3 and validate that the implementation's query order matches the proof. Record both tree combines and Euclid iterations so the experiment can distinguish these costs.
+$$
+\sum_j \log\!\left(\frac{g_{j-1}}{g_j}\right)=\log\!\left(\frac{g_0}{g_k}\right)\le \log V_{max}.
+$$
+
+There are $O(\log n)$ canonical summaries, so the traversal and the constant work per summary contribute $O(\log n)$, and all value-dependent Euclid work contributes $O(\log V_{max})$. The total is $O(\log n+\log V_{max})$. This is the cross-call telescoping argument required by D3; the within-call remainder shrinkage alone is not sufficient. In the derivation, state the actual accumulator/merge order used by `query_gcd` and handle zero values before taking logarithms; the inequality applies to positive running GCDs.
 
 ### 4.5 Crossover interpretation
 
@@ -186,13 +193,13 @@ For a mixed workload with $10^6$ total operations, 50% queries, 50% assignments,
 | Variant | Calculation | Approximate predicted logical work |
 |---|---|---:|
 | `ARRAY` | $500{,}000 \times 64$ element reads + $500{,}000$ writes | 32,500,000 reads/writes |
-| `SEG-MAX` | $500{,}000 \times 40$ query steps + $500{,}000 \times 20$ ancestor updates | 30,000,000 path/node steps, plus combines |
+| `SEG-MAX-COUNT` | $500{,}000 \times 40$ query steps + $500{,}000 \times 20$ ancestor updates | 30,000,000 path/node steps, plus combines |
 | `DC-MAX` | $500{,}000 \times$ (query steps per published algorithm) + the sum of measured-by-counter repair steps $R_i+S_i$ | Query component is logarithmic; assignment component must use the proved update bound and the adversarial repair count |
-| `BIT-PREFIX-MAX` with full rebuild after each decrease | $Q\cdot20 + U_{inc}\cdot20 + D\cdot1{,}000{,}000$ | Depends on decrease count $D$; at 10% decreases among the 500,000 assignments, rebuilds alone visit about 50,000,000,000 cells |
+| Prefix baseline, worst-case full-array rebuild scenario | $Q\cdot20 + U_{inc}\cdot20 + \sum_i B_i$; for this scenario, $B_i=n$ | At 10% decreases among 500,000 assignments, if every decrease rebuilds all $n$ cells, the upper-bound scenario is 50,000,000,000 rebuilt cells. The actual prediction must use the affected-cell counts proved for the implementation. |
 
-The last row assumes one complete `n`-cell rebuild per decreasing assignment. If the team's baseline uses another correct recovery method, recalculate from its actual work. This example explains why even a modest decrease fraction can dominate the prefix-only baseline under a rebuild policy. It is a prediction derived from the stated policy, not a measurement.
+The last row is explicitly a worst-case scenario, not a claim that the current implementation rebuilds the entire array on each decrease. `INTERFACE.md` says the baseline rebuilds affected cells; substitute the sum of those affected-cell counts in the final D6 calculation. This shows how repeated repairs can dominate as the repair region grows, without claiming an unverified per-update cost.
 
-For GCD, a segment-tree query visits $O(\log n)$ summaries, and each merge invokes GCD. The elementary upper-bound calculation is about 40 summary/path steps and at most $O(\log V)$ Euclid divisions per merge. D3's telescoping argument tightens accumulated value-dependent work to $O(\log V)$ across the query, yielding $O(\log n + \log V)$. Therefore the report should predict both the structural steps (about 20 levels) and the value-dependent Euclid iteration total; it should not multiply two worst-case maxima as if they necessarily occur together after the D3 proof.
+For GCD, a segment-tree query visits $O(\log n)$ summaries. The coarse bound is $O(\log n\log V_{max})$ if every merge is independently charged its worst-case Euclid cost. D3 tightens the total to $O(\log n+\log V_{max})$ by telescoping the positive running GCDs across merge calls, as shown above. The prediction is therefore about 20 tree levels plus a value-dependent total bounded logarithmically in $V_{max}$, not 40 independent worst-case Euclid calls.
 
 For the two-tree Fenwick design, $\log_2(1{,}000{,}000)\approx19.93$, so its target logarithmic query work is on a scale of about 20 levels, multiplied by the algorithm's per-level operations. The project brief does not provide the per-level constant or the exact worst-case update count. Those must come from D2 and the implemented algorithm, rather than an invented numerical estimate. The analyst can still make a useful prediction: queries should grow logarithmically with $n$, while decrease updates are the likely high-work case and must be modeled by the D2 recurrence/recomputation bound.
 
@@ -206,27 +213,27 @@ For the two-tree Fenwick design, $\log_2(1{,}000{,}000)\approx19.93$, so its tar
 4. Record the machine model, processor, cache sizes, operating system, compiler and version, flags, and thread/power conditions.
 5. Record each random seed used to generate a trace. Store raw per-run measurements as CSV under `results/` and scripts used to produce figures.
 6. Validate each trace against the array oracle before interpreting performance. Exclude correctness failures from timing comparisons and report them as failures.
-7. At full scale, use at least $10^6$ array elements and $10^6$ operations, as required for in-memory structures. Keep a smaller scale only as an additional diagnostic.
+7. Run Structure A and Structure B at the required scale of $10^6$ elements and $10^6$ operations. Use a pilot to set a reasonable scan-work budget for the plain-array oracle and a rebuild-work budget for the prefix baseline. One million full-width oracle queries over one million elements would scan $10^{12}$ values per run, so use fewer queries for that diagnostic and state the exact count. Keep the seeded million-operation differential correctness run separate; it need not consist of full-width queries.
 8. Cache claims require profiler output. If profiling is unavailable, report timing and counters without attributing a cause to cache behavior.
 
 ### 5.2 Experiment matrix
 
-Use independent runs for maximum queries and GCD queries where a structure does not support both. $w/n$ is the interval-width fraction; choose valid endpoints so the measured width is the actual inclusive width.
+Run a small pilot first. For each width $w$, keep the same prefix of a generated `query_max` trace for A and B. Time one million operations on A and B at full scale. For the oracle, cap each timed run at a predeclared scan budget (proposed cap: $10^8$ inspected elements), so use $Q_{oracle}=\min(10^6,\lfloor 10^8/w\rfloor)$ queries at that width. Use the same shortened trace for an apples-to-apples sampled comparison, and report the separate full-scale A/B totals. The cap is a planning choice, not a measured result; adjust it after a pilot if needed and record the final value. Apply the same pilot-first rule to rebuild-heavy prefix-baseline tests. $w/n$ is the interval-width fraction; choose valid 1-based endpoints so the inclusive width is exactly $w$.
 
-| ID | $n$ | Operations | Widths | Update mix | Purpose | Seed / status |
+| ID | `n` | Timed operations | Widths / query type | Variants | Purpose | Seed / status |
 |---|---:|---:|---|---|---|---|
-| E1 | $10^6$ | $10^6$ | 1, 8, 64, $n/16$, $n/2$, $n$ | no updates | Query cost vs width; array/tree crossover | `[SEED] / pending` |
-| E2 | $10^6$ | $10^6$ | uniform random | 0%, 10%, 50%, 90% assignments | Query/update mix | `[SEED] / pending` |
-| E3 | $10^6$ | $10^6$ | uniform random | 100% increases | Fenwick increase path | `[SEED] / pending` |
-| E4 | $10^6$ | $10^6$ | uniform random | 100% decreases | Decrease repair cost | `[SEED] / pending` |
-| E5 | $10^6$ | $10^6$ | selected to maximize documented step count | mixed; emphasize adversarial decreases | Project adversarial target: recomputation and query steps | `[SEED] / pending` |
-| E6 | $10^6$ | $10^6$ | short and full-width | repeated decreases to same/update-neighboring regions | Prefix baseline rebuild cost and correctness limitation | `[SEED] / pending` |
-| E7 | $10^6$ | $10^6$ | uniform random and adversarial | mixed values with repeated/equal maxima | Count-of-maximum correctness and cost | `[SEED] / pending` |
-| E8 | $10^6$ | $10^6$ | uniform random | varied values, including zeros and large values | GCD operand and Euclid iteration sensitivity | `[SEED] / pending` |
+| E1 | $10^6$ | A/B: $10^6$ queries per width; oracle: pilot-capped sample | `query_max`, widths 1, 8, 64, $n/16$, $n/2$, $n$ | `SEG-MAX-COUNT`, `DC-MAX`, `ARRAY` | Same max-only query trace; query work vs width | `[SEED] / pending` |
+| E2 | $10^6$ | $10^6$ total operations | `query_max` plus assignments; 0%, 10%, 50%, 90% assignments | A and B; sampled oracle where scan budget permits | Query/update mix | `[SEED] / pending` |
+| E3 | $10^6$ | $10^6$ assignments | Increase-only | A and B | Assignment cost without decreases | `[SEED] / pending` |
+| E4 | $10^6$ | $10^6$ assignments | Decrease-only | A and B | Decrease repair cost | `[SEED] / pending` |
+| E5 | $10^6$ | $10^6$ operations | Adversarial query endpoints and decreasing assignments | A and B | Project adversarial targets: query steps and recomputation | `[SEED] / pending` |
+| E6 | `[PILOT]` | `[PILOT-CAPPED]` decreases | Prefix queries plus decreases | Prefix baseline and oracle | Repeated-rebuild diagnostic; report reduced size and exact work | `[SEED] / pending` |
+| E7 | $10^6$ | $10^6$ operations, oracle count/range sample capped | `query_max_count`, equal maxima and ties | A and oracle | Count-of-maximum behavior and cost (B excluded by interface) | `[SEED] / pending` |
+| E8 | $10^6$ | $10^6$ operations, oracle count/range sample capped | `query_gcd`; zeros, bounded and large values | A and oracle | GCD cost and Euclid iteration sensitivity (B excluded) | `[SEED] / pending` |
 
 Document value distributions explicitly (for example, bounded uniform values, repeated plateaus, powers of two, or Fibonacci-like values for Euclid stress). Avoid changing distributions between variants within one comparison. Adversarial inputs should be reproducible and tied to the project's D5 constructions.
 
-### 5.3 Timing and output tables (this is a templelate I will fill this out after anaykysiis n actual data and tests and all...)
+### 5.3 Timing and output tables (fill after measurement)
 
 **Machine and compiler (fill before measurements):**
 
@@ -244,36 +251,29 @@ Document value distributions explicitly (for example, bounded uniform values, re
 
 | Experiment | Variant | Mean time (ms) | Spread (ms or stated measure) | Work counters | Correct? |
 |---|---|---:|---:|---|---|
-| E1, width 1 | `ARRAY` | `[MEASURE]` | `[MEASURE]` | elements `[MEASURE]` | `[Y/N]` |
-| E1, width 1 | `SEG-MAX` | `[MEASURE]` | `[MEASURE]` | visits/combines `[MEASURE]` | `[Y/N]` |
+| E1, width 1 | `SEG-MAX-COUNT` `query_max` | `[MEASURE]` | `[MEASURE]` | visits/combines `[MEASURE]` | `[Y/N]` |
 | E1, width 1 | `DC-MAX` | `[MEASURE]` | `[MEASURE]` | steps `[MEASURE]` | `[Y/N]` |
-| E1, width n | `ARRAY` | `[MEASURE]` | `[MEASURE]` | elements `[MEASURE]` | `[Y/N]` |
-| E1, width n | `SEG-MAX` | `[MEASURE]` | `[MEASURE]` | visits/combines `[MEASURE]` | `[Y/N]` |
+| E1, width 1 | `ARRAY` (sample size `[Q]`) | `[MEASURE]` | `[MEASURE]` | elements `[MEASURE]` | `[Y/N]` |
+| E1, width n | `SEG-MAX-COUNT` `query_max` | `[MEASURE]` | `[MEASURE]` | visits/combines `[MEASURE]` | `[Y/N]` |
+| E1, width n | `DC-MAX` | `[MEASURE]` | `[MEASURE]` | steps `[MEASURE]` | `[Y/N]` |
+| E1, width n | `ARRAY` (sample size `[Q]`) | `[MEASURE]` | `[MEASURE]` | elements `[MEASURE]` | `[Y/N]` |
+| E7 | A `query_max_count` / oracle | `[MEASURE]` | `[MEASURE]` | elements/combines `[MEASURE]` | `[Y/N]` |
+| E8 | A `query_gcd` / oracle | `[MEASURE]` | `[MEASURE]` | GCD calls/steps `[MEASURE]` | `[Y/N]` |
 | E4 / E5 | `DC-MAX` | `[MEASURE]` | `[MEASURE]` | repair `R,S` `[MEASURE]` | `[Y/N]` |
 | E6 | `BIT-PREFIX-MAX` | `[MEASURE]` | `[MEASURE]` | rebuilds/cells `[MEASURE]` | `[Y/N]` |
 | E8 | `SEG-GCD` | `[MEASURE]` | `[MEASURE]` | combines/Euclid steps `[MEASURE]` | `[Y/N]` |
 
-### 5.4 Figures to generate from the raw CSV (this is a tempelate will fill after anlysis results later...)
+### 5.4 Figures to generate from the raw CSV (fill after measurement)
 
 Include the plotted points and uncertainty/spread bars, plus axes, units, workload, and seed in each caption. Suggested plots:
 
-1. **Range-query time vs width** (log-scaled width axis): `ARRAY`, `SEG-MAX`, and `DC-MAX`.
+1. **`query_max` time vs width** (log-scaled width axis): `ARRAY`, A, and B; identify the oracle sample count at each width.
 2. **Assignment time vs decrease fraction**: segment tree and two-tree Fenwick, with ordinary and adversarial traces separated.
 3. **Recomputation work vs update index** for adversarial decreases, with maximum and percentile summaries.
 4. **Predicted vs measured work**: predicted counter totals versus observed counters, and a separate measured-time plot. Keep model predictions distinct from elapsed-time data.
-5. **GCD query time and Euclid steps vs value range** for `SEG-GCD`.
+5. **GCD query time and Euclid steps vs value range** for A, with the oracle sample count stated.
 
-```mermaid
-xychart-beta
-  title "Template: range-query time versus interval width"
-  x-axis "Inclusive width w (replace with measured widths)" [1, 8, 64, 4096, 65536, 1000000]
-  y-axis "Mean time per query (ms)" 0 --> 1
-  line [0, 0, 0, 0, 0, 0]
-  line [0, 0, 0, 0, 0, 0]
-  line [0, 0, 0, 0, 0, 0]
-```
-
-The chart above is an **empty plotting template**, not experimental data. Replace the zero placeholders from the recorded CSV or remove this block and insert a generated figure.
+Do not add an empty chart with made-up zero values. Generate each figure from the recorded CSV after measurements, and label the oracle's reduced sample size where it differs from A or B.
 
 ## 6. Predicted versus measured analysis
 
@@ -286,7 +286,7 @@ Complete this section after running the benchmarks.
 | `DC-MAX` query uses logarithmic steps | visited cells vs $n$ and width | `[FILL AFTER MEASUREMENT]` |
 | `DC-MAX` decreases can cause extra repair work | `R,S` distributions by update type and adversary | `[FILL AFTER MEASUREMENT]` |
 | Prefix-only baseline cannot safely apply a decrease using its increase rule | differential test and chosen recovery behavior | `[FILL AFTER MEASUREMENT]` |
-| GCD value work follows the D3 bound | Euclid iterations vs `n` and `V` | `[FILL AFTER MEASUREMENT]` |
+| GCD value work follows the D3 bound | Euclid iterations vs `n` and $V_{max}$ | `[FILL AFTER MEASUREMENT]` |
 
 **Observed crossover, if any:** `[WIDTH / WORKLOAD / VARIANTS / UNCERTAINTY]`
 
@@ -327,7 +327,7 @@ flowchart TD
 
 - This is a pre-measurement model. Constants, crossover widths, and actual winners are not known yet.
 - `DC-MAX` update complexity must be stated consistently with the team's implementation and D2 proof. This report uses explicit repair counters instead of inventing a bound.
-- The project asks for maximum plus multiplicity. Verify that the implemented two-tree Fenwick variant maintains multiplicity correctly under ties and decreases; if it only returns the maximum value, document that gap and do not claim full application support.
+- Structure B's interface is `query_max` and returns only a maximum value. The maximum-frequency operation `query_max_count` belongs to Structure A and the oracle; compare B only on matching max-only queries.
 - A standard prefix-maximum Fenwick tree is a baseline with a restricted update rule. Any decrease recovery policy must be included in both correctness and timing.
 - The tight GCD bound depends on the D3 telescoping proof and its assumptions about values and merge order. Present the complete proof in the derivation file.
 - Cache behavior is not inferred from timing alone. Cite profiler output or leave the explanation at the level of observed work and timing.
