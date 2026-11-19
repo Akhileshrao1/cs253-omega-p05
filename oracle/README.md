@@ -64,9 +64,11 @@ This is the expected success format, not a recorded run result. Record the actua
 
 The `PrefixMax` differential overload is implemented. A concrete `PrefixMaxFenwick` implementation is not currently present in the repository, so it is not included in the compiled integration self-test. Add it when that implementation is available.
 
-## Failure shrinking
+## Failure handling and shrinking
 
-`shrink_failure(sequence, predicate)` applies delta-debugging to remove chunks of operations while preserving a failure. The predicate must rebuild the candidate from the original initial array before replaying each trial. Preserve the seed and initial array with a minimized sequence for reproducibility.
+Assignments are checked immediately by reading the assigned position back from both the candidate and Oracle. Build exceptions and size mismatches are reported before replay; their reproducer is an empty operation sequence because no operation caused the failure.
+
+For operation failures, the self-test reducer rebuilds from the same initial array and accepts a reduced sequence only when it reproduces the original failure message/class. This prevents a query mismatch from being reported as a smaller, unrelated invariant failure. Preserve the seed and initial array with a minimized sequence for reproducibility.
 
 ## Generator and domain
 
