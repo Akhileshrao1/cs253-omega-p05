@@ -38,7 +38,19 @@ TestFailure make_failure(
     failure.message = message;
     failure.expected = expected;
     failure.actual = actual;
-    failure.sequence.assign(operations.begin(), operations.begin() + index + 1);
+    const uint64_t end = std::min<uint64_t>(index + 1, operations.size());
+    failure.sequence.assign(operations.begin(), operations.begin() + end);
+    return failure;
+}
+
+TestFailure make_build_failure(const std::string& message,
+                               const std::string& expected,
+                               const std::string& actual) {
+    TestFailure failure;
+    failure.failed = true;
+    failure.message = message;
+    failure.expected = expected;
+    failure.actual = actual;
     return failure;
 }
 
@@ -48,12 +60,19 @@ TestFailure run_differential(
     const std::vector<Value>& initial,
     const std::vector<TestOperation>& operations,
     Index invariant_stride, Compare compare) {
-    candidate.build(initial);
-    oracle.build(initial);
-
+    try {
+        candidate.build(initial);
+        oracle.build(initial);
+    } catch (const std::exception& error) {
+        return make_build_failure(std::string("build exception: ") + error.what(),
+                                  "build completes", error.what());
+    } catch (...) {
+        return make_build_failure("build exception: unknown exception",
+                                  "build completes", "unknown exception");
+    }
     if (candidate.size() != initial.size()) {
-        return make_failure(0, "size mismatch after build",
-            std::to_string(initial.size()), std::to_string(candidate.size()), operations);
+        return make_build_failure("size mismatch after build",
+            std::to_string(initial.size()), std::to_string(candidate.size()));
     }
 
     for (Index i = 0; i < operations.size(); ++i) {
@@ -62,6 +81,12 @@ TestFailure run_differential(
             if (op.kind == OpKind::Assign) {
                 candidate.assign(op.first, op.value);
                 oracle.assign(op.first, op.value);
+                const Value expected = oracle.get(op.first);
+                const Value actual = candidate.get(op.first);
+                if (expected != actual) {
+                    return make_failure(i, "point read mismatch after assignment",
+                        value_text(expected), value_text(actual), operations);
+                }
             } else if (op.kind == OpKind::Read) {
                 const Value expected = oracle.get(op.first);
                 const Value actual = candidate.get(op.first);
@@ -175,14 +200,28 @@ TestFailure differential_test(
     RangeMax& candidate, const std::vector<Value>& initial,
     const std::vector<TestOperation>& operations, Index invariant_stride) {
     OracleMaxCount oracle;
-    oracle.build(initial);
-    candidate.build(initial);
+    try {
+        oracle.build(initial);
+        candidate.build(initial);
+    } catch (const std::exception& error) {
+        return make_build_failure(std::string("build exception: ") + error.what(),
+                                  "build completes", error.what());
+    } catch (...) {
+        return make_build_failure("build exception: unknown exception",
+                                  "build completes", "unknown exception");
+    }
+    if (candidate.size() != initial.size()) {
+        return make_build_failure("size mismatch after build",
+            std::to_string(initial.size()), std::to_string(candidate.size()));
+    }
     for (Index i = 0; i < operations.size(); ++i) {
         const auto& op = operations[i];
         try {
             if (op.kind == OpKind::Assign) {
                 candidate.assign(op.first, op.value);
                 oracle.assign(op.first, op.value);
+                Value e = oracle.get(op.first), a = candidate.get(op.first);
+                if (e != a) return make_failure(i, "point read mismatch after assignment", value_text(e), value_text(a), operations);
             } else if (op.kind == OpKind::Read) {
                 Value e = oracle.get(op.first), a = candidate.get(op.first);
                 if (e != a) return make_failure(i, "point read mismatch", value_text(e), value_text(a), operations);
