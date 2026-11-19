@@ -70,7 +70,7 @@ TestFailure run_differential(
                 }
             } else {
                 const auto mismatch = compare(candidate, oracle, op);
-                if (!mismatch.empty()) {
+                if (!mismatch.first.empty()) {
                     return make_failure(i, "query mismatch", mismatch.first,
                                         mismatch.second, operations);
                 }
