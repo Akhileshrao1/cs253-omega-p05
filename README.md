@@ -86,7 +86,7 @@ run as verified.
 - Differential runner and shrinker: `oracle/differential_test.hpp` and
   `oracle/differential_test.cpp`.
 - Integrated self-test: `oracle/oracle_differential_selftest.cpp`.
-- D4 derivation: `docs/derivations/D4_250041020.md` (PDF export:
-  `D4_250041020.pdf`).
+- D4 derivation: `docs/derivations/D4_250041020.md` (PDF export to
+  `docs/derivations/D4_250041020.pdf`; attach the generated PDF before final submission).
 - Known limitation: the PrefixMax baseline implementation is not yet available,
   so only its Oracle and generic differential-test overload are provided.
