@@ -59,7 +59,7 @@ int main(int argc, char** argv) {
         auto initial = generate_initial_array(TestKind::Max, config.n, rng);
         auto ops = generate_operations(TestKind::Max, config, rng);
         DimaCeterchiMax candidate;
-        ok &= report("Structure B maximum", differential_test(candidate, initial, ops, 1000));
+        ok &= report("Structure B maximum", differential_test(candidate, initial, ops, invariant_stride));
     }
 
     if (!ok) return 1;
