@@ -10,11 +10,6 @@
 #include <random>
 #include <string>
 
-static std::string failure_kind(const std::string& message) {
-    const std::size_t detail = message.find(':');
-    return message.substr(0, detail);
-}
-
 template <typename Candidate, typename Runner>
 static bool run_case(const char* label, Candidate& candidate,
                      const std::vector<Value>& initial,
@@ -37,7 +32,9 @@ static bool run_case(const char* label, Candidate& candidate,
                 const TestFailure reproduced =
                     runner(candidate, initial, trial, invariant_stride);
                 return reproduced.failed &&
-                       failure_kind(reproduced.message) == failure_kind(failure.message);
+                       reproduced.message == failure.message &&
+                       reproduced.expected == failure.expected &&
+                       reproduced.actual == failure.actual;
             });
     }
 
