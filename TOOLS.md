@@ -4,7 +4,10 @@
 |------------------|---------|----------|----------------|-----------------------------|
 | ChatGPT (OpenAI, 19 Nov 2026) | Hanchate Akhilesh Rao | Drafted and typeset the D3 range GCD proof | `docs/derivations/D3_250001031.pdf` | Checked the proof against both accumulators in `query_internal`. Ran the GCD and interface smoke tests and confirmed the README demo output. |
 | ChatGPT (AI assistant; 17 Nov 2026) | Thakur Tejasva Singh | Focused revision of the Analyst's predicted-cost report | `REPORT.md`, `TOOLS.md` | Compared the report with the shared interface and available branches; separated rebuilt-cell, read, write, and combine counters; aligned the prefix example to 1-based ranges. The prefix-baseline decrease bound remains open until its implementation is available. |
+| ChatGPT (OpenAI, 19 Nov 2026) | Kasireddy Pranav Karthik | Drafted the Oracle differential-test harness changes and D4 proof | `oracle/differential_test.*`, `oracle/oracle_differential_selftest.cpp`, `oracle/README.md`, `docs/derivations/D4_250041020.pdf` | The proof is derived from the Project 5 D4 statement. Code and full-scale execution still require local compilation and recorded test output. |
 | Claude (Anthropic), Claude Sonnet 5.5; 19 Nov 2026 | Koushik Reddy K | Adversary module: generators, measurement tools, replay harness, D5 demo | `adversary/*` | Verified against INTERFACE.md, tested counters, verified oracle parity |
+
+- 19 Nov 2026: Implement a seeded differential runner for the Oracle-owner role, compare the current structures against the plain-array oracle, shrink failing sequences, and prepare D4 from the Project 5 statement.
 
 ## Representative prompts
 
