@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <sstream>
 #include <stdexcept>
+#include <utility>
 
 namespace {
 Value random_value(TestKind kind, std::mt19937_64& rng) {
