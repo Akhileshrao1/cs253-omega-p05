@@ -22,11 +22,17 @@ static bool run_case(const char* label, Candidate& candidate,
 
     // Re-run each reduced sequence from the same initial state. The predicate
     // returns true only if the same differential/invariant failure persists.
-    const auto minimal = shrink_failure(
-        failure.sequence,
-        [&](const std::vector<TestOperation>& trial) {
-            return runner(candidate, initial, trial, invariant_stride).failed;
-        });
+    // Build failures have no operation sequence and cannot be reduced.
+    std::vector<TestOperation> minimal;
+    if (!failure.sequence.empty()) {
+        minimal = shrink_failure(
+            failure.sequence,
+            [&](const std::vector<TestOperation>& trial) {
+                const TestFailure reproduced =
+                    runner(candidate, initial, trial, invariant_stride);
+                return reproduced.failed && reproduced.message == failure.message;
+            });
+    }
 
     std::cerr << "FAIL: " << label << " at operation "
               << failure.operation_index << ": " << failure.message
