@@ -55,3 +55,38 @@ Q 1 3
 ```
 
 Each output row contains `maximum count gcd`. Update commands produce no output.
+
+## Oracle differential test
+
+The Oracle is a plain-array reference implementation. The seeded runner compares each
+available structure after point assignments (including decreases), point reads and
+range queries. It periodically checks invariants and shrinks a failing operation prefix
+with delta debugging.
+
+Build and run the currently integrated differential tests:
+
+```bash
+g++ -std=c++17 -O2 -Wall -Wextra -pedantic \
+  oracle/oracle.cpp oracle/differential_test.cpp \
+  oracle/oracle_differential_selftest.cpp -o oracle_differential_selftest
+./oracle_differential_selftest 1000000 1000000 20261118
+```
+
+Arguments are `n`, operation count and seed. For a quick local check, use
+`./oracle_differential_selftest 5000 20000 20261118` first. The current integration
+test covers Structure A MaxCount, Structure A GCD and Structure B maximum.
+A PrefixMax differential overload is available, but a concrete prefix-max baseline
+is not yet present in the repository, so it is not included in the integration run.
+Record the actual compiler output and test output before treating the million-operation
+run as verified.
+
+## Oracle-owner deliverables
+
+- Oracle implementation: `oracle/oracle.hpp` and `oracle/oracle.cpp`.
+- Differential runner and shrinker: `oracle/differential_test.hpp` and
+  `oracle/differential_test.cpp`.
+- Integrated self-test: `oracle/oracle_differential_selftest.cpp`.
+- D4 derivation: `docs/derivations/D4_250041020.md` (PDF export:
+  `D4_250041020.pdf`).
+- Known limitation: the PrefixMax baseline implementation is not yet available,
+  so only its Oracle and generic differential-test overload are provided.
