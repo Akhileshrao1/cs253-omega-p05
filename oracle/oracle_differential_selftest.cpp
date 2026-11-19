@@ -8,6 +8,12 @@
 #include <algorithm>
 #include <iostream>
 #include <random>
+#include <string>
+
+static std::string failure_kind(const std::string& message) {
+    const std::size_t detail = message.find(':');
+    return message.substr(0, detail);
+}
 
 template <typename Candidate, typename Runner>
 static bool run_case(const char* label, Candidate& candidate,
@@ -30,7 +36,8 @@ static bool run_case(const char* label, Candidate& candidate,
             [&](const std::vector<TestOperation>& trial) {
                 const TestFailure reproduced =
                     runner(candidate, initial, trial, invariant_stride);
-                return reproduced.failed && reproduced.message == failure.message;
+                return reproduced.failed &&
+                       failure_kind(reproduced.message) == failure_kind(failure.message);
             });
     }
 
