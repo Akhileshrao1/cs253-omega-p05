@@ -1,0 +1,2 @@
+adversary/bin/
+adversary/out/
