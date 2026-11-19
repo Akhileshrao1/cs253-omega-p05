@@ -5,6 +5,7 @@
 #include "../src/structA/gcd_monoid.hpp"
 #include "../src/structB/dima_ceterchi_max.hpp"
 
+#include <algorithm>
 #include <iostream>
 #include <random>
 
@@ -37,7 +38,8 @@ int main(int argc, char** argv) {
     if (argc > 2) config.operations = stoull(argv[2]);
     if (argc > 3) config.seed = stoull(argv[3]);
 
-    const Index invariant_stride = std::max<Index>(1000, config.n / 10);\n    bool ok = true;
+    const Index invariant_stride = std::max<Index>(1000, config.n / 10);
+    bool ok = true;
     {
         std::mt19937_64 rng(config.seed);
         auto initial = generate_initial_array(TestKind::MaxCount, config.n, rng);
@@ -50,7 +52,7 @@ int main(int argc, char** argv) {
         auto initial = generate_initial_array(TestKind::Gcd, config.n, rng);
         auto ops = generate_operations(TestKind::Gcd, config, rng);
         SegTree<GcdMonoid> candidate;
-        ok &= report("Structure A GCD", differential_test(candidate, initial, ops, 1000));
+        ok &= report("Structure A GCD", differential_test(candidate, initial, ops, invariant_stride));
     }
     {
         std::mt19937_64 rng(config.seed + 2);
