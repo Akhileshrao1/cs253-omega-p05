@@ -37,13 +37,13 @@ int main(int argc, char** argv) {
     if (argc > 2) config.operations = stoull(argv[2]);
     if (argc > 3) config.seed = stoull(argv[3]);
 
-    bool ok = true;
+    const Index invariant_stride = std::max<Index>(1000, config.n / 10);\n    bool ok = true;
     {
         std::mt19937_64 rng(config.seed);
         auto initial = generate_initial_array(TestKind::MaxCount, config.n, rng);
         auto ops = generate_operations(TestKind::MaxCount, config, rng);
         SegTree<MaxCountMonoid> candidate;
-        ok &= report("Structure A MaxCount", differential_test(candidate, initial, ops, 1000));
+        ok &= report("Structure A MaxCount", differential_test(candidate, initial, ops, invariant_stride));
     }
     {
         std::mt19937_64 rng(config.seed + 1);
