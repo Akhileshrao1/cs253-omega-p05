@@ -58,7 +58,8 @@ TestFailure differential_test(
     const std::vector<TestOperation>& operations, Index invariant_stride = 1000);
 
 // Delta-debug the operation sequence. The predicate must rebuild the candidate
-// from the same initial array before replaying each trial sequence.
+// from the same initial array and preserve the original failure class for each
+// trial. Build failures carry an empty sequence and are not reduced.
 std::vector<TestOperation> shrink_failure(
     const std::vector<TestOperation>& sequence,
     const std::function<bool(const std::vector<TestOperation>&)>& still_fails);
