@@ -25,7 +25,7 @@ int main(int argc, char** argv) {
     int64_t n = args.num("n", 1000000);
     int64_t ops = args.num("ops", 1000000);
     uint64_t seed = static_cast<uint64_t>(args.num("seed", 1));
-    int64_t H = args.num("hot", 16);
+    int64_t H = args.num("hot", std::min<int64_t>(16, n));
     int64_t qfrac = args.num("qfrac", 0);
     std::string pos_file = args.str("positions", "");
     std::string calib_mode = args.str("calib", "multiples");

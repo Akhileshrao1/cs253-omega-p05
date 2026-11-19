@@ -62,7 +62,7 @@ int main(int argc, char** argv) {
     seg_r.build(readings); seg_g.build(calib);
     dc.build(readings);
 
-    Stat a_upd, a_q, g_upd, g_q, b_upd, b_q, b_upd_dec;
+    Stat a_upd, a_q, g_upd, g_q, b_upd, b_q, b_upd_dec, b_upd_inc;
     uint64_t q_checked = 0;
     std::string why;
 
@@ -80,11 +80,13 @@ int main(int argc, char** argv) {
             Index i = static_cast<Index>(op.a);
             Value v = op.b;
             bool decrease = v < shadow[i - 1];
+            bool increase = v > shadow[i - 1];
             shadow[i - 1] = v;
             oracle_r.assign(i, v);
             seg_r.reset_counters(); seg_r.assign(i, v); a_upd.add(seg_r.counters(), k);
             dc.reset_counters();    dc.assign(i, v);    b_upd.add(dc.counters(), k);
             if (decrease) b_upd_dec.add(dc.counters(), k);
+            else if (increase) b_upd_inc.add(dc.counters(), k);
         } else if (op.type == 'C') {
             Index i = static_cast<Index>(op.a);
             oracle_g.assign(i, op.b);
@@ -125,9 +127,16 @@ int main(int argc, char** argv) {
     g_q.print("A segment tree (gcd)", "Q gcd");
     b_upd.print("B Dima-Ceterchi", "R update");
     b_upd_dec.print("B Dima-Ceterchi", "R decrease");
+    b_upd_inc.print("B Dima-Ceterchi", "R increase");
     b_q.print("B Dima-Ceterchi", "Q max");
-    if (b_upd.count && b_upd_dec.count)
-        std::printf("\nB: mean reads per decrease / per all updates = %.3f  (1.000 means a decrease costs no more than an increase)\n",
-                    (static_cast<double>(b_upd_dec.reads) / b_upd_dec.count) / (static_cast<double>(b_upd.reads) / b_upd.count));
+    if (b_upd_dec.count && b_upd_inc.count) {
+        double dec_mean = static_cast<double>(b_upd_dec.reads) / b_upd_dec.count;
+        double inc_mean = static_cast<double>(b_upd_inc.reads) / b_upd_inc.count;
+        std::printf("\nB: mean reads per decrease / per increase = %.3f  (1.000 means decrease costs identical to increase)\n",
+                    dec_mean / inc_mean);
+    } else if (b_upd_dec.count) {
+        std::printf("\nB: all updates were decreases (mean reads = %.1f)\n",
+                    static_cast<double>(b_upd_dec.reads) / b_upd_dec.count);
+    }
     return 0;
 }

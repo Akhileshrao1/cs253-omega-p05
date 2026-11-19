@@ -13,7 +13,7 @@ namespace adv {
 
 class PrefixMaxFenwick {
 public:
-    static constexpr int64_t NEG = INT64_MIN / 4;
+    static constexpr int64_t NEG = INT64_MIN;
 
     int64_t n = 0;
     std::vector<int64_t> a;     // raw array, 1-based
