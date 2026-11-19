@@ -45,7 +45,7 @@ g++ -std=c++17 -O2 adversary/run_adversarial.cpp oracle/oracle.cpp -o adversary/
 ## Workflow
 ```
 # 1. MEASURE Structure B first (the generators use what is measured, not a guess)
-bin/find_worst_updates --n 1000000 --out out/worst_positions.txt
+bin/find_worst_updates --n 1000000 --metric recomp --out out/worst_positions.txt
 bin/find_worst_queries --n 1000000 --mode hill --out out/worst_pairs.txt   # exact search: --n 1024 (<= 8192)
 
 # 2. generate (every seed can be appended to ../results/seeds.csv with --log)
