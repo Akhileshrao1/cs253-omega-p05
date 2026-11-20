@@ -30,6 +30,24 @@ python bench/run.py --all --profile quick
 
 `--build-only` compiles the harness and runs the unit smoke tests and sensor sample. The quick run adds the differential checks and a reduced-size benchmark. The full run uses one million operations per differential workload, seed `20261119`, and prints `Verified differential ... (1000000 operations)` for each operation family.
 
+
+
+## Oracle differential test
+
+The Oracle is a plain-array reference implementation. The seeded runner compares the available structures after assignments (including decreases), point reads and range queries, checks invariants periodically, and shrinks failing operation sequences while preserving the exact failure reason.
+
+Build and run the integrated differential tests from the repository root with a C++17 compiler:
+
+\`\`\`bash
+g++ -std=c++17 -O2 -Wall -Wextra -pedantic \
+  oracle/oracle.cpp oracle/differential_test.cpp \
+  oracle/oracle_differential_selftest.cpp -o oracle_differential_selftest
+./oracle_differential_selftest 5000 20000 20261118
+./oracle_differential_selftest 1000000 1000000 20261118
+\`\`\`
+
+Arguments are array size, operation count and seed. The runner currently covers Structure A MaxCount, Structure A GCD and Structure B maximum. A passing run ends with \`All available differential tests passed.\` The full run uses one million operations per structure. See [oracle/README.md](oracle/README.md) for the standalone Oracle smoke test, detailed commands, seeds and failure replay instructions.
+
 ## Quick Start
 
 From the repository root on Ubuntu or WSL, build the evaluator and save the sample below as `trace.txt`.
