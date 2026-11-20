@@ -38,15 +38,15 @@ The Oracle is a plain-array reference implementation. The seeded runner compares
 
 Build and run the integrated differential tests from the repository root with a C++17 compiler:
 
-\`\`\`bash
+```bash
 g++ -std=c++17 -O2 -Wall -Wextra -pedantic \
   oracle/oracle.cpp oracle/differential_test.cpp \
   oracle/oracle_differential_selftest.cpp -o oracle_differential_selftest
 ./oracle_differential_selftest 5000 20000 20261118
 ./oracle_differential_selftest 1000000 1000000 20261118
-\`\`\`
+```
 
-Arguments are array size, operation count and seed. The runner currently covers Structure A MaxCount, Structure A GCD and Structure B maximum. A passing run ends with \`All available differential tests passed.\` The full run uses one million operations per structure. See [oracle/README.md](oracle/README.md) for the standalone Oracle smoke test, detailed commands, seeds and failure replay instructions.
+Arguments are array size, operation count and seed. The differential self-test currently covers Structure A MaxCount, Structure A GCD and Structure B maximum. The PrefixMaxFenwick baseline is available at `src/structB/prefix_max_fenwick.hpp` and is used by the benchmark/adversary workflow, but is not currently integrated into `oracle_differential_selftest.cpp`. A passing run ends with `All available differential tests passed.` The full run uses one million operations per structure. See [oracle/README.md](oracle/README.md) for the standalone Oracle smoke test, detailed commands, seeds and failure replay instructions.
 
 ## Quick Start
 
@@ -149,6 +149,6 @@ Values are mean ± sample standard deviation across seven trials. See [the full 
 
 ## Known limitations
 
-The former standalone oracle large self-test references an absent helper header. The reproducible million-operation differential suite lives in `bench/benchmark.cpp`.
+The standalone Oracle workload (`oracle/oracle_large_selftest.cpp`) exercises the plain-array Oracle itself. The integrated differential self-test (`oracle/oracle_differential_selftest.cpp`) compares the currently integrated Structure A and Structure B implementations against that Oracle. The PrefixMaxFenwick baseline is available to the benchmark/adversary workflow but is not currently included in that differential self-test.
 
 See [TOOLS.md](TOOLS.md) for tool use and [REPORT.md](REPORT.md#13-references) for references.
