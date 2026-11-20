@@ -14,23 +14,62 @@ Team Omega — CS 253 / MA 253, Spring 2026
 | Thakur Tejasva Singh | 250001072 | @thakur-tejasva | Analyst | `bench/` | D6 |
 | Aashish Sharma | 250041001 | @aashishsharma9098 | Scale & Reproducibility | `bench/` | D7 |
 
-## Quick Start
+## Summary
 
-From the repository root, compile and run the sensor replay demo in Ubuntu or WSL.
+The sensor replay runs the same input with either structure. Structure A uses a generic segment tree with separate max-count and GCD monoids and returns the maximum, its frequency, and the calibration GCD. Structure B uses a two-tree Fenwick implementation and returns the range maximum. The benchmark also measures a prefix-only Fenwick baseline and the plain-array oracle. See [REPORT.md](REPORT.md) for the measured crossover and the cost of decreases.
 
-```bash
-g++ -std=c++17 -Iinclude -I. app/sensor_demo.cpp -o /tmp/sensor-demo && /tmp/sensor-demo
+## Build and test
+
+Use a C++17 compiler compatible with GCC, Python 3.9 or newer, and Matplotlib 3.6 or newer for figures. The archived run used GCC 15.2.0 (MinGW-w64) and Python 3.14.8 on Windows. The benchmark and app are built from the repository root.
+
+```sh
+python -m pip install matplotlib
+python bench/run.py --build-only
+python bench/run.py --all --profile quick
 ```
 
-Enter the number of sensors, the initial readings, the initial calibration values,
-and the number of commands. Then enter one command per line. Positions start at
-1, and query ranges include both endpoints.
+`--build-only` compiles the harness and runs the unit smoke tests and sensor sample. The quick run adds the differential checks and a reduced-size benchmark. The full run uses one million operations per differential workload, seed `20261119`, and prints `Verified differential ... (1000000 operations)` for each operation family.
+
+
+
+## Oracle differential test
+
+The Oracle is a plain-array reference implementation. The seeded runner compares the available structures after assignments (including decreases), point reads and range queries, checks invariants periodically, and shrinks failing operation sequences while preserving the exact failure reason.
+
+Build and run the integrated differential tests from the repository root with a C++17 compiler:
+
+\`\`\`bash
+g++ -std=c++17 -O2 -Wall -Wextra -pedantic \
+  oracle/oracle.cpp oracle/differential_test.cpp \
+  oracle/oracle_differential_selftest.cpp -o oracle_differential_selftest
+./oracle_differential_selftest 5000 20000 20261118
+./oracle_differential_selftest 1000000 1000000 20261118
+\`\`\`
+
+Arguments are array size, operation count and seed. The runner currently covers Structure A MaxCount, Structure A GCD and Structure B maximum. A passing run ends with \`All available differential tests passed.\` The full run uses one million operations per structure. See [oracle/README.md](oracle/README.md) for the standalone Oracle smoke test, detailed commands, seeds and failure replay instructions.
+
+## Quick Start
+
+From the repository root on Ubuntu or WSL, build the evaluator and save the sample below as `trace.txt`.
+
+```bash
+mkdir -p build
+g++ -std=c++17 -O2 -Iinclude -I. app/sensor_demo.cpp -o build/sensor_demo
+./build/sensor_demo --structure A < trace.txt
+./build/sensor_demo --structure B < trace.txt
+```
+
+### Evaluation interface
+
+Both modes read the positive sensor count, that many initial readings, that many initial calibration values, and a nonnegative command count. Then supply one command per line. Positions start at 1 and query ranges include both endpoints. Readings are signed 64-bit integers with the minimum value reserved. Calibration values range from 0 through 1,000,000,000.
 
 | Sensor demo command | Meaning |
 | --- | --- |
 | `R i x` | Set the reading at position `i` to `x`. |
-| `C i x` | Set the calibration value at position `i` to `x`. |
-| `Q l r` | Print the maximum reading, its count, and the calibration GCD over positions `l` through `r`. |
+| `C i x` | Set the calibration value at position `i` to `x` in A. B validates and consumes the same command. |
+| `Q l r` | Query positions `l` through `r`. A prints `maximum count gcd` and B prints `maximum`. |
+
+Each query prints one output row. Update commands produce no output. Running the evaluator without arguments selects Structure A.
 
 ### Sample input
 
@@ -38,55 +77,68 @@ and the number of commands. Then enter one command per line. Positions start at
 3
 4 9 9
 6 15 21
-5
+7
 Q 1 3
 R 2 2
+Q 1 3
+R 3 3
 Q 1 3
 C 1 10
 Q 1 3
 ```
 
-### Expected output
+### Expected output for Structure A
 
 ```text
 9 2 3
 9 1 3
-9 1 1
+4 1 3
+4 1 1
 ```
 
-Each output row contains `maximum count gcd`. Update commands produce no output.
+### Expected output for Structure B
 
-## Oracle differential test
-
-The Oracle is a plain-array reference implementation. The seeded runner compares each
-available structure after point assignments (including decreases), point reads and
-range queries. It periodically checks invariants and shrinks a failing operation prefix
-with delta debugging.
-
-Build and run the currently integrated differential tests:
-
-```bash
-g++ -std=c++17 -O2 -Wall -Wextra -pedantic \
-  oracle/oracle.cpp oracle/differential_test.cpp \
-  oracle/oracle_differential_selftest.cpp -o oracle_differential_selftest
-./oracle_differential_selftest 1000000 1000000 20261118
+```text
+9
+9
+4
+4
 ```
 
-Arguments are `n`, operation count and seed. For a quick local check, use
-`./oracle_differential_selftest 5000 20000 20261118` first. The current integration
-test covers Structure A MaxCount, Structure A GCD and Structure B maximum.
-A PrefixMax differential overload is available, but a concrete prefix-max baseline
-is not yet present in the repository, so it is not included in the integration run.
-Record the actual compiler output and test output before treating the million-operation
-run as verified.
+## Benchmarks and figures
 
-## Oracle-owner deliverables
+```sh
+python bench/run.py --all
+python results/plot.py results
+```
 
-- Oracle implementation: `oracle/oracle.hpp` and `oracle/oracle.cpp`.
-- Differential runner and shrinker: `oracle/differential_test.hpp` and
-  `oracle/differential_test.cpp`.
-- Integrated self-test: `oracle/oracle_differential_selftest.cpp`.
-- D4 derivation: `docs/derivations/D4_250041020.md` (PDF export to
-  `docs/derivations/D4_250041020.pdf`; attach the generated PDF before final submission).
-- Known limitation: the PrefixMax baseline implementation is not yet available,
-  so only its Oracle and generic differential-test overload are provided.
+The first command runs the tests, sensor example, full-scale benchmarks and figures. On Ubuntu/WSL, `bash scripts/run_all.sh` is equivalent. Allow several minutes for the full run. It writes to `build/benchmark/full/` by default. The second command rebuilds the archived figures and summary from existing CSVs.
+
+See [bench/README.md](bench/README.md) for options, input generation, CSV schemas and failure replay. See [the raw measurements](results/raw/) and [the timing summary](results/summary.csv) for the archived run.
+
+## Repository map
+
+| Path | Contents |
+| --- | --- |
+| `include/`, `src/` | Shared interfaces and the structures under study |
+| `app/` | Sensor replay and the command format shown above |
+| `oracle/`, `tests/` | Array oracles and unit smoke tests |
+| `adversary/`, `bench/` | D5 tools, workload generation, differential tests and timing harness |
+| `results/`, `docs/` | Measurement data, figures and derivations |
+| `scripts/` | One-command build, test and benchmark on Ubuntu/WSL |
+
+## Results at a glance
+
+| Full-scale range maximum | Segment tree | Two-tree Fenwick |
+| --- | ---: | ---: |
+| Width 500,000, queries only | 260.63 ± 12.38 ns/query | 96.05 ± 6.49 ns/query |
+| Width 64, 50% assignments | 228.05 ± 25.13 ns/op | 815.95 ± 186.05 ns/op |
+
+Values are mean ± sample standard deviation across seven trials. See [the full results](REPORT.md#11-results) <!--and [the PDF report](REPORT.pdf)-->
+ To export both the report and D6 after editing, use `python scripts/export_report.py --chromium PATH_TO_CHROME` with Pandoc installed.
+
+## Known limitations
+
+The former standalone oracle large self-test references an absent helper header. The reproducible million-operation differential suite lives in `bench/benchmark.cpp`.
+
+See [TOOLS.md](TOOLS.md) for tool use and [REPORT.md](REPORT.md#13-references) for references.

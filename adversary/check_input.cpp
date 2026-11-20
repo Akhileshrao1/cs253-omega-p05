@@ -29,7 +29,7 @@ int main(int argc, char** argv) {
     if (baseline) sim.build(inst.readings);
     std::vector<int64_t> cur = inst.readings;
 
-    uint64_t r_upd = 0, c_upd = 0, queries = 0, dec = 0, inc = 0, same = 0, sum_w = 0;
+    uint64_t r_upd = 0, c_upd = 0, queries = 0, dec = 0, inc = 0, same = 0, sum_w = 0, replayed_dec = 0;
     int64_t max_w = 0;
     bool stopped = false;
     size_t stopped_at = 0;
@@ -37,11 +37,13 @@ int main(int argc, char** argv) {
         const Op& op = inst.ops[k];
         if (op.type == 'R') {
             ++r_upd;
-            if (op.b < cur[op.a - 1]) ++dec;
+            bool is_dec = (op.b < cur[op.a - 1]);
+            if (is_dec) ++dec;
             else if (op.b > cur[op.a - 1]) ++inc;
             else ++same;
             cur[op.a - 1] = op.b;
             if (baseline && !stopped) {
+                if (is_dec) ++replayed_dec;
                 sim.update_rescan(op.a, op.b);
                 if (static_cast<int64_t>(sim.rescan_reads) > budget) { stopped = true; stopped_at = k + 1; }
             }
@@ -68,8 +70,8 @@ int main(int argc, char** argv) {
         if (stopped) std::printf("STOPPED after command %zu: budget of %lld rescan reads reached\n", stopped_at, (long long)budget);
         std::printf("cells rebuilt = %llu, elements rescanned = %llu\n", (unsigned long long)sim.stale_rebuilds,
                     (unsigned long long)sim.rescan_reads);
-        if (dec) std::printf("avg cells rebuilt per decrease = %.1f   (ordinary Fenwick update touches about %d cells)\n",
-                             static_cast<double>(sim.stale_rebuilds) / static_cast<double>(dec), ilog2(static_cast<uint64_t>(n)) + 1);
+        if (replayed_dec) std::printf("avg cells rebuilt per decrease = %.1f   (ordinary Fenwick update touches about %d cells)\n",
+                             static_cast<double>(sim.stale_rebuilds) / static_cast<double>(replayed_dec), ilog2(static_cast<uint64_t>(n)) + 1);
     }
     return 0;
 }

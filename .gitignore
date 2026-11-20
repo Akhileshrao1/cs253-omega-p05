@@ -66,6 +66,7 @@ vcpkg_installed/
 # test output & cache
 Testing/
 .cache/
+__pycache__/
 adversary/bin/
 adversary/out/
 !adversary/Makefile

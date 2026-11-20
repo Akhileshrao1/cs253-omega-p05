@@ -1,0 +1,72 @@
+{
+  "started_utc": "2026-11-19T16:33:04+00:00",
+  "elapsed_wall_seconds": 376.81,
+  "profile": "full",
+  "case_filter": null,
+  "seed": 20261119,
+  "warmups": 1,
+  "runs": 7,
+  "oracle_scan_budget": 100000000,
+  "compiler": "g++",
+  "compiler_version": "g++ (Rev13, Built by MSYS2 project) 15.2.0\nCopyright (C) 2025 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.",
+  "compiler_flags": [
+    "-std=c++17",
+    "-O3",
+    "-DNDEBUG",
+    "-Wall",
+    "-Wextra",
+    "-pedantic"
+  ],
+  "host": {
+    "os": "Windows-11-10.0.26320-SP0",
+    "architecture": "AMD64",
+    "cpu": "11th Gen Intel(R) Core(TM) i5-11320H @ 3.20GHz",
+    "logical_cpus": 8,
+    "physical_cores": 4,
+    "ram_bytes": 8362713088,
+    "model": "82K1",
+    "caches": {
+      "L1 data": [
+        "48 KiB"
+      ],
+      "L1 instruction": [
+        "32 KiB"
+      ],
+      "L2 unified": [
+        "1280 KiB"
+      ],
+      "L3 unified": [
+        "8192 KiB"
+      ]
+    },
+    "power_policy": "Power Scheme GUID: 381b4222-f694-41f0-9685-ff5bb260df2e  (Balanced)"
+  },
+  "python": "3.14.8",
+  "threads": 1,
+  "affinity": "OS scheduled",
+  "git_head_at_run": "c5a5cad5567e52a7f5603ed8c3d5c5ae01ffeef3",
+  "sources_sha256": {
+    "adversary/baseline_sim.hpp": "60fae01ff40639df4467abca895a6a87404152e65bef80847659b3c6bae424d7",
+    "adversary/common.hpp": "56d03fc999bbbff0dbe3da6807f2aa183fac5c3b2d9588abb6da4712049b6fc3",
+    "adversary/reader.hpp": "9620a539baf2b48c07adb166c5af75a7288eff98f9f8c754ee25e75c0e86f540",
+    "adversary/target.hpp": "65963803f7423b8c2eca79cfed083f5547f8900b0db163ad912b6712b05a4f8c",
+    "bench/benchmark.cpp": "ff3d81c347bcc60dd296d5b9bab2c731da88fcb2b48dfb041f7410c1e21699d5",
+    "bench/run.py": "33223e318c6353e3b144d49fe0fd4ed4fb7468a1dab9d8a6c8ee029dd7feeab5",
+    "bench/workloads.hpp": "aa52e95f988c1b070f9a4ef780ec62aa331c2e943ffb3d591c69e51d457fda0b",
+    "include/range_structure.hpp": "d731440c72e81f79eb64e48fd9c0cd73ce3aad5922b043cd793e667ac0aad210",
+    "oracle/oracle.cpp": "072fc4c28be4f9ad1b09bc48d1d9bd842bf53d4329002df4153840ede6fa48f4",
+    "oracle/oracle.hpp": "b95455276464c623475a9876c8a9908b351aee8127597c2fa7ba8ba58632f5bf",
+    "results/plot.py": "cbe1cad672316e9c694da6e9896c4c787a5aca0ad51270aafc9027d4c550e3ba",
+    "src/structA/gcd_monoid.hpp": "6d0f308da12ad1e39846999bb51883074906af99a8d264c9f8f5e803e6748595",
+    "src/structA/max_count_monoid.hpp": "4ac3eadeefdb468a65ccf94324d27e140775f34dca31950cbffede869d4c601b",
+    "src/structA/segment_tree.hpp": "67f0a3d7f22b3c2e60b82e9833594eef6b0471a6c49de6a0e2b88be4fd69ffa6",
+    "src/structB/dima_ceterchi_max.hpp": "75564659801331493fd391c4c4d374aa71390fb8870ac438f74d5faee6be169a",
+    "src/structB/prefix_max_fenwick.hpp": "fb761a42af3ac6013f075bda6bcd2cdf3c044a9a16b431da882a8afd7f6a68cf"
+  },
+  "matplotlib": "3.11.2",
+  "profiler": {
+    "source_check": "wpr.exe -pmcsources",
+    "attempt": "xperf.exe -on PROC_THREAD+LOADER+PROFILE -PmcProfile LLCMisses",
+    "result": "Failed to configure counters (exit -2147418113). No cache-miss measurements collected."
+  }
+}
