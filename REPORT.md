@@ -245,7 +245,20 @@ The build timer includes initialization and allocation for a new instance. Build
 - These results represent one Windows machine and one seed across a matrix of synthetic traces. Use multiple seeds and randomized case order on the grading machine to estimate sensitivity to trace and run order.
 - The widest matched batches have only 100–1,600 operations. Use the million-query rows to compare the indexed structures at those widths. The short matched batches provide the bounded comparison with the literal array.
 - The profiler attempt yielded no cache data. Repeat selected query and update traces with permitted hardware counters before attributing timing differences to cache misses.
-- D7 should measure allocation footprints separately. As a starting model, excluding vector/object overhead and excess capacity, the implementations store $2\operatorname{cap}$ aggregate entries plus $n$ raw values for A, $3(n+1)$ values for B, $2(n+1)$ for the prefix baseline, and $n+1$ for the oracle.
+- **D7 memory model (theoretical; measured data pending).** Let $n$ be the number of elements and $\operatorname{cap}$ the smallest power of two at least $n$. `Value` is `int64_t` (8 bytes); `MaxCount` contains a `Value` and a `uint64_t` count (nominally 16 bytes; the reporter records the compiler's actual `sizeof`). The segment-tree class stores $2\operatorname{cap}$ summaries and $n$ raw values, so its vector-payload model is $2\operatorname{cap}\cdot\operatorname{sizeof}(T)+n\cdot\operatorname{sizeof}(Value)$. This gives separate models for the max-count tree and GCD tree. Structure B stores three $(n+1)$-element `Value` vectors. The sensor application keeps separate readings and calibration inputs; those input buffers are counted separately from structure-owned arrays. The reporter compares these logical-size models with vector-capacity payload and reports whole-process peak memory in a separate row. The process row includes all reporter variants at once and is not a per-structure footprint. See `bench/memory_footprint.cpp` and `bench/run_memory.py`; insert the measured CSV and environment data from `results/raw/memory_footprint.csv` and `results/raw/memory_footprint.environment.json` after the hosted run succeeds.
+
+  At $n=1{,}000{,}000$, $\operatorname{cap}=1{,}048{,}576$. The following are theoretical vector-payload estimates only; the readings and calibration input vectors are shown separately.
+
+  | Quantity | Model bytes | Bytes per element |
+  |---|---:|---:|
+  | A max-count tree | 41,554,432 | 41.554432 |
+  | A GCD tree | 24,777,216 | 24.777216 |
+  | A sensor application (both A trees) | 66,331,648 | 66.331648 |
+  | B two-tree range maximum | 24,000,024 | 24.000024 |
+  | Two input vectors | 16,000,000 | 16.000000 |
+  | B plus the separate A GCD tree | 48,777,240 | 48.777240 |
+
+  Each input vector remains separate from these structure figures. The whole-process peak is expected to exceed the sum for one application because the measurement reporter constructs all variants together.
 - The grader's exact command-line format should be confirmed with the Architect before tagging. The stale standalone oracle self-test depends on a missing header. The integrated differential suite covers the tested implementations. [Run instructions](bench/README.md)
 
 ## 13. References

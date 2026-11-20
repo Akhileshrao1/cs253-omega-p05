@@ -56,6 +56,11 @@ public:
 
     Index size() const override { return n; }
 
+    // Dynamic array payload only; excludes the vector objects and allocator metadata.
+    size_t storage_bytes() const {
+        return (arr.capacity() + bit1.capacity() + bit2.capacity()) * sizeof(Value);
+    }
+
     Value get(Index i) const override {
         if (i < 1 || i > n) throw out_of_range("Invalid index");
         ++ops.node_reads;

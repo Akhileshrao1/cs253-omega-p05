@@ -83,6 +83,16 @@ The first command runs the tests, sensor example, full-scale benchmarks and figu
 
 See [bench/README.md](bench/README.md) for options, input generation, CSV schemas and failure replay. See [the raw measurements](results/raw/) and [the timing summary](results/summary.csv) for the archived run.
 
+### Memory footprint (D7)
+
+Run the D7 memory report from the repository root:
+
+```sh
+python bench/run_memory.py --n 1000000 --out results/raw/memory_footprint.csv
+```
+
+The CSV reports the logical-size model and actual vector-capacity payload separately for Structure A's max-count and GCD trees, Structure B's two-tree maximum, and the prefix baseline. It has separate rows for the input vectors and for the whole reporter process. The whole-process row is a peak working-set/RSS reading while all reporter arrays and variants are alive; it includes input data, every constructed structure, the runtime and other process allocations. It is not a per-structure measurement. The structure rows exclude input vectors, vector objects and allocator metadata. A matching `.environment.json` records the exact commands, compiler, machine, input size and CSV hash. GitHub Actions stores these files as run artifacts; download them and copy the CSV and metadata JSON into `results/raw/` before the final submission. The workflow runs a one-million-element memory report on pushes and pull requests, and can run the full reproducibility suite when manually dispatched.
+
 ## Repository map
 
 | Path | Contents |
