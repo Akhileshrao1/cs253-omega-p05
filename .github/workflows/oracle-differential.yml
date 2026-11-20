@@ -1,0 +1,29 @@
+name: Oracle differential tests
+
+on:
+  pull_request:
+    paths:
+      - "oracle/**"
+      - "src/structA/**"
+      - "src/structB/**"
+      - "include/**"
+      - ".github/workflows/oracle-differential.yml"
+  push:
+    branches:
+      - main
+      - "pranav/oracle-differential-harness"
+
+jobs:
+  oracle-differential:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build differential self-test
+        run: |
+          g++ -std=c++17 -O2 -Wall -Wextra -pedantic \
+            oracle/oracle.cpp oracle/differential_test.cpp \
+            oracle/oracle_differential_selftest.cpp -o oracle_differential_selftest
+      - name: Quick deterministic test
+        run: ./oracle_differential_selftest 5000 20000 20261118
+      - name: Full-scale deterministic test
+        run: ./oracle_differential_selftest 1000000 1000000 20261118

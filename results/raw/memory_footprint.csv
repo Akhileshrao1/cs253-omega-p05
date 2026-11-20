@@ -1,0 +1,11 @@
+record,structure,n,cap,actual_bytes,model_bytes,actual_bytes_per_element,model_bytes_per_element
+structure_arrays,A_max_count,1000000,1048576,41554432,41554432,41.5544,41.5544
+structure_arrays,A_gcd,1000000,1048576,24777216,24777216,24.7772,24.7772
+structure_arrays,A_sensor_app,1000000,1048576,66331648,66331648,66.3316,66.3316
+structure_arrays,B_two_tree_max,1000000,1048576,24000024,24000024,24,24
+structure_arrays,B_prefix_baseline,1000000,1048576,16000016,16000016,16,16
+structure_arrays,B_sensor_app_with_A_gcd,1000000,1048576,48777240,48777240,48.7772,48.7772
+input_array,readings,1000000,1048576,8000000,,,
+input_array,calibration,1000000,1048576,8000000,,,
+input_array,both_inputs,1000000,1048576,16000000,,,
+whole_process,all_constructed_variants,1000000,1048576,126160896,,,

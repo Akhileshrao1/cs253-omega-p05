@@ -240,6 +240,12 @@ public:
         return n;
     }
 
+    // Dynamic array payload only; excludes the vector objects and allocator metadata.
+    size_t storage_bytes() const {
+        return tree.capacity() * sizeof(T) +
+               raw_values.capacity() * sizeof(Value);
+    }
+
     Value get(Index i) const override {
         if (i < 1 || i > n) {
             throw out_of_range("Invalid segment tree index");

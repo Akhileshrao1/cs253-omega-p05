@@ -26,6 +26,11 @@ public:
 
     Index size() const override { return values.empty() ? 0 : values.size() - 1; }
 
+    // Dynamic array payload only; excludes the vector objects and allocator metadata.
+    size_t storage_bytes() const {
+        return (values.capacity() + tree.capacity()) * sizeof(Value);
+    }
+
     Value get(Index i) const override {
         validate_index(i);
         ++ops.node_reads;

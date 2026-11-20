@@ -134,6 +134,7 @@ def make_metadata(compiler, profile, seed, runs, case, start, seconds):
         for path in (ROOT / directory).rglob("*.hpp")
     } | {"bench/run.py", "results/plot.py"})
     return {
+        "command": [sys.executable, *sys.argv],
         "started_utc": start,
         "elapsed_wall_seconds": seconds,
         "profile": profile,

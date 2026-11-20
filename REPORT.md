@@ -240,15 +240,64 @@ At width 64, the GCD tree averaged 6.70 Euclid iterations per query for the smal
 
 The build timer includes initialization and allocation for a new instance. Build counters are reset at the start of each timed operation batch. The CSV work totals correspond to the replay only.
 
-## 12. Limitations
+## 12. D7 memory footprint and reproducibility
+
+This measurement separates structure-owned array payload, the sensor input arrays, and whole-process peak resident memory. It uses $n=1{,}000{,}000$ and padded segment-tree capacity $\operatorname{cap}=1{,}048{,}576$. `Value` is `int64_t` (8 bytes); this GCC build reports `sizeof(MaxCount) = 16` bytes.
+
+For Structure A, each segment tree owns $2\operatorname{cap}$ summary values and $n$ original values. Its logical-size model is $2\operatorname{cap}\cdot\operatorname{sizeof}(T)+n\cdot\operatorname{sizeof}(Value)$. Structure B's two-tree range-maximum implementation owns three $(n+1)$-element `Value` vectors; its prefix baseline owns two. The observed payload is computed from each vector's `capacity()` and element size. The model uses logical element counts and excludes allocator metadata.
+
+### Structure array payload
+
+| Structure-owned arrays | Model bytes | Observed payload bytes | Observed bytes per input element |
+|---|---:|---:|---:|
+| A max-count tree | 41,554,432 | 41,554,432 | 41.554432 |
+| A GCD tree | 24,777,216 | 24,777,216 | 24.777216 |
+| A sensor application (both A trees) | 66,331,648 | 66,331,648 | 66.331648 |
+| B two-tree range maximum | 24,000,024 | 24,000,024 | 24.000024 |
+| B prefix baseline | 16,000,016 | 16,000,016 | 16.000016 |
+| B range maximum plus separate A GCD tree | 48,777,240 | 48,777,240 | 48.777240 |
+
+At this input size, observed vector-capacity payload equals the logical-size model for every structure row. This equality applies to the vector payload only; it does not include allocator metadata or process overhead.
+
+### Inputs and whole-process peak
+
+| Category | Bytes | Meaning |
+|---|---:|---|
+| Readings input array | 8,000,000 | One million 8-byte values |
+| Calibration input array | 8,000,000 | One million 8-byte values |
+| Both input arrays | 16,000,000 | Kept separate from structure arrays |
+| Whole-process peak RSS | 126,160,896 | All input arrays and reporter variants exist together; includes runtime and other process memory |
+
+The process peak is a separate measurement and must not be read as the footprint of one structure or one application. The Linux runner reports peak RSS through `getrusage`; it is expected to include more than the explicitly counted vector payloads.
+
+### Hosted measurement record
+
+The memory run started at `2026-11-20 13:07:15 UTC` on the GitHub-hosted Ubuntu 26.04.1 runner. The VM reported an Intel Xeon Platinum 8573C, one physical core, two logical CPUs, and 7.75 GiB RAM. It used GCC 15.2.0 and Python 3.12.16. The deterministic inputs were `readings[i] = i % 100003` and `calibration[i] = i % 1000000001`; no random seed was used for this memory-only run.
+
+Reproduce the memory measurement from the repository root with:
+
+```text
+python bench/run_memory.py --n 1000000 --out build/benchmark/memory_footprint.csv
+```
+
+The runner recorded the exact compile command and measurement command in [`results/raw/memory_footprint.environment.json`](results/raw/memory_footprint.environment.json). Raw output is in [`results/raw/memory_footprint.csv`](results/raw/memory_footprint.csv). The workflow that builds, runs smoke checks, and measures memory is [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
+
+### Archived full-scale baseline and D7 branch verification
+
+The repository already contains a historical full-profile run in `results/environment.json`: seed `20261119`, one warm-up, seven measured runs, and 376.81 seconds elapsed. Its host was Windows 11 on an Intel Core i5-11320H laptop, with GCC 15.2.0 (MSYS2) and Python 3.14.8. The archived `results/raw/checks.csv` contains 141/141 passing rows, including million-element cases. The old environment record does not save the exact invocation. Its source manifest differs from the current D7 branch in seven files, including the benchmark, workload generator, and structure implementations, so this historical run is context and is not verification of the D7 branch.
+
+The D7 push workflow is [GitHub Actions run 44768746924](https://github.com/Akhileshrao1/cs253-omega-p05/actions/runs/44768746924), on commit `7cdbfb822a10daa261f7412e91fa76374a6cb91e`. Both jobs succeeded: build/smoke plus the one-million-element memory report, and the full-scale reproduction. The full-scale job ran `python bench/run.py --all --profile full --runs 5 --seed 20261119 --out build/benchmark/full`, with one warm-up and five measured runs, and completed in 181.25 seconds. Its checks CSV records 141/141 passing checks. The benchmark matrix includes input sizes 1,024, 16,384, 32,768, 262,144, and 1,000,000; the summary has 145 rows. The hosted runner reported Ubuntu Linux x86_64 on an Azure VM with AMD EPYC 7763 CPU, one physical core, two logical CPUs, and 8,317,022,208 bytes RAM; compiler g++ 15.2.0, Python 3.12.16, and flags `-std=c++17 -O3 -DNDEBUG -Wall -Wextra -pedantic`. Seed: `20261119`. The exact command, environment, source commit, and SHA-256 manifest for 16 source files are preserved in [`results/d7_full_scale/environment.json`](results/d7_full_scale/environment.json); measured summaries, checks, raw case CSVs, and figures are in [`results/d7_full_scale/`](results/d7_full_scale/). This archive is separate from the historical baseline and the memory-only run. The workflow is configured to run full scale on a push to `codex/d7-memory-footprint` or on `workflow_dispatch`.
+
+The individual derivation and run record for Aashish Sharma (250041001) is in [`docs/derivations/D7_250041001.pdf`](docs/derivations/D7_250041001.pdf).
+
+## 13. Limitations
 
 - These results represent one Windows machine and one seed across a matrix of synthetic traces. Use multiple seeds and randomized case order on the grading machine to estimate sensitivity to trace and run order.
 - The widest matched batches have only 100–1,600 operations. Use the million-query rows to compare the indexed structures at those widths. The short matched batches provide the bounded comparison with the literal array.
 - The profiler attempt yielded no cache data. Repeat selected query and update traces with permitted hardware counters before attributing timing differences to cache misses.
-- D7 should measure allocation footprints separately. As a starting model, excluding vector/object overhead and excess capacity, the implementations store $2\operatorname{cap}$ aggregate entries plus $n$ raw values for A, $3(n+1)$ values for B, $2(n+1)$ for the prefix baseline, and $n+1$ for the oracle.
 - The grader's exact command-line format should be confirmed with the Architect before tagging. The stale standalone oracle self-test depends on a missing header. The integrated differential suite covers the tested implementations. [Run instructions](bench/README.md)
 
-## 13. References
+## 14. References
 
 1. P. M. Fenwick, “A new data structure for cumulative frequency tables,” *Software: Practice and Experience*, 24(3), 327–336, 1994.
 2. M. Dima and R. Ceterchi, “Efficient range minimum queries using binary indexed trees,” *Olympiads in Informatics*, 9, 39–44, 2015. [Paper](https://ioinformatics.org/oi/pdf/v9_2015_39_44.pdf)
