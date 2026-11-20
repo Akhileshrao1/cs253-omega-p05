@@ -1,0 +1,59 @@
+{
+  "started_utc": "2026-11-20T13:07:15+00:00",
+  "n": 1000000,
+  "input_seed": null,
+  "input_pattern": "deterministic: readings[i]=i%100003; calibration[i]=i%1000000001",
+  "invocation": [
+    "/opt/hostedtoolcache/Python/3.12.16/x64/bin/python",
+    "bench/run_memory.py",
+    "--n",
+    "1000000",
+    "--out",
+    "build/benchmark/memory_footprint.csv"
+  ],
+  "compile_command": [
+    "g++",
+    "-std=c++17",
+    "-O2",
+    "-Wall",
+    "-Wextra",
+    "-pedantic",
+    "/home/runner/work/cs253-omega-p05/cs253-omega-p05/bench/memory_footprint.cpp",
+    "-o",
+    "/home/runner/work/cs253-omega-p05/cs253-omega-p05/build/benchmark/memory_footprint"
+  ],
+  "measurement_command": [
+    "/home/runner/work/cs253-omega-p05/cs253-omega-p05/build/benchmark/memory_footprint",
+    "1000000"
+  ],
+  "measurement_notes": "Structure rows count dynamic vector payload by capacity. Input rows count the two input vectors. The whole_process row includes inputs, all constructed variants, runtime and other process memory. The model uses logical sizes and excludes allocator metadata.",
+  "compiler_path": "/usr/bin/g++",
+  "compiler_version": "g++ (Ubuntu 15.2.0-16ubuntu1) 15.2.0\nCopyright (C) 2025 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.",
+  "host": {
+    "os": "Linux-7.0.0-1020-azure-x86_64-with-glibc2.43",
+    "architecture": "x86_64",
+    "cpu": "INTEL(R) XEON(R) PLATINUM 8573C",
+    "logical_cpus": 2,
+    "physical_cores": 1,
+    "ram_bytes": 8315985920,
+    "model": "Virtual Machine",
+    "caches": {
+      "L1 data": [
+        "48KiB"
+      ],
+      "L1 instruction": [
+        "32KiB"
+      ],
+      "L2 unified": [
+        "2048KiB"
+      ],
+      "L3 unified": [
+        "266240KiB"
+      ]
+    },
+    "power_policy": "schedutil"
+  },
+  "python": "3.12.16 (main, Oct 26 2026, 02:48:44) [GCC 15.2.0]",
+  "csv_path": "build/benchmark/memory_footprint.csv",
+  "csv_sha256": "6b6c5e2b45f01665e4850201907ca1017e276a6e6ebc54381b8eff52389b085b"
+}
