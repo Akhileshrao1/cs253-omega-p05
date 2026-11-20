@@ -91,6 +91,13 @@ int main() {
                  "three cells rebuilt after current-maximum decrease");
 
     expect_invariants(fw);
+    PrefixMaxFenwick regression;
+    regression.build({9, 1});
+
+    expect_equal(regression.query_prefix_max(2), 9,
+                 "regression: prefix maximum of [9, 1]");
+
+    expect_invariants(regression);
 
     cout << "\nAll PrefixMaxFenwick tests passed!\n";
     return 0;
