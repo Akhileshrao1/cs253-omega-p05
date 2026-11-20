@@ -14,7 +14,7 @@ echo "== D5 demo (counterexample + cost formula) =="
 ./bin/demo_increase_only_fails | tail -3
 
 echo "== measure Structure B at n=$N =="
-./bin/find_worst_updates --n $N --out out/worst_positions.txt | sed -n '2,3p;6p'
+./bin/find_worst_updates --n $N --metric recomp --out out/worst_positions.txt | sed -n '2,3p;6p'
 ./bin/find_worst_queries --n $N --out out/worst_pairs.txt | sed -n '3,4p'
 
 echo "== generate inputs (seeds appended to results/seeds.csv) =="

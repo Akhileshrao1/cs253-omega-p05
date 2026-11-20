@@ -30,7 +30,7 @@ int main(int argc, char** argv) {
     int64_t n = args.num("n", 1024);
     uint64_t seed = static_cast<uint64_t>(args.num("seed", 1));
     int64_t topk = args.num("topk", 64);
-    std::string metric = args.str("metric", "reads");
+    std::string metric = args.str("metric", "recomp");
     std::string out = args.str("out", "worst_positions.txt");
     args.finish();
     if (n < 2) die("--n must be >= 2");
