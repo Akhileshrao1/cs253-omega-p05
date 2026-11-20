@@ -240,28 +240,60 @@ At width 64, the GCD tree averaged 6.70 Euclid iterations per query for the smal
 
 The build timer includes initialization and allocation for a new instance. Build counters are reset at the start of each timed operation batch. The CSV work totals correspond to the replay only.
 
-## 12. Limitations
+## 12. D7 memory footprint and reproducibility
+
+This measurement separates structure-owned array payload, the sensor input arrays, and whole-process peak resident memory. It uses $n=1{,}000{,}000$ and padded segment-tree capacity $\operatorname{cap}=1{,}048{,}576$. `Value` is `int64_t` (8 bytes); this GCC build reports `sizeof(MaxCount) = 16` bytes.
+
+For Structure A, each segment tree owns $2\operatorname{cap}$ summary values and $n$ original values. Its logical-size model is $2\operatorname{cap}\cdot\operatorname{sizeof}(T)+n\cdot\operatorname{sizeof}(Value)$. Structure B's two-tree range-maximum implementation owns three $(n+1)$-element `Value` vectors; its prefix baseline owns two. The observed payload is computed from each vector's `capacity()` and element size. The model uses logical element counts and excludes allocator metadata.
+
+### Structure array payload
+
+| Structure-owned arrays | Model bytes | Observed payload bytes | Observed bytes per input element |
+|---|---:|---:|---:|
+| A max-count tree | 41,554,432 | 41,554,432 | 41.554432 |
+| A GCD tree | 24,777,216 | 24,777,216 | 24.777216 |
+| A sensor application (both A trees) | 66,331,648 | 66,331,648 | 66.331648 |
+| B two-tree range maximum | 24,000,024 | 24,000,024 | 24.000024 |
+| B prefix baseline | 16,000,016 | 16,000,016 | 16.000016 |
+| B range maximum plus separate A GCD tree | 48,777,240 | 48,777,240 | 48.777240 |
+
+At this input size, observed vector-capacity payload equals the logical-size model for every structure row. This equality applies to the vector payload only; it does not include allocator metadata or process overhead.
+
+### Inputs and whole-process peak
+
+| Category | Bytes | Meaning |
+|---|---:|---|
+| Readings input array | 8,000,000 | One million 8-byte values |
+| Calibration input array | 8,000,000 | One million 8-byte values |
+| Both input arrays | 16,000,000 | Kept separate from structure arrays |
+| Whole-process peak RSS | 126,160,896 | All input arrays and reporter variants exist together; includes runtime and other process memory |
+
+The process peak is a separate measurement and must not be read as the footprint of one structure or one application. The Linux runner reports peak RSS through `getrusage`; it is expected to include more than the explicitly counted vector payloads.
+
+### Hosted measurement record
+
+The memory run started at `2026-11-20 13:07:15 UTC` on the GitHub-hosted Ubuntu 26.04.1 runner. The VM reported an Intel Xeon Platinum 8573C, one physical core, two logical CPUs, and 7.75 GiB RAM. It used GCC 15.2.0 and Python 3.12.16. The deterministic inputs were `readings[i] = i % 100003` and `calibration[i] = i % 1000000001`; no random seed was used for this memory-only run.
+
+Reproduce the memory measurement from the repository root with:
+
+```text
+python bench/run_memory.py --n 1000000 --out build/benchmark/memory_footprint.csv
+```
+
+The runner recorded the exact compile command and measurement command in [`results/raw/memory_footprint.environment.json`](results/raw/memory_footprint.environment.json). Raw output is in [`results/raw/memory_footprint.csv`](results/raw/memory_footprint.csv). The workflow that builds, runs smoke checks, and measures memory is [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
+
+The separate full-scale benchmark has **not yet been run**. Its planned command is `python bench/run.py --all --profile full --runs 5 --seed 20261119 --out build/benchmark/full`. The workflow's `full-scale-reproduction` job runs only for `workflow_dispatch`; the workflow must first be available on the repository's default branch before GitHub can dispatch it. The full-scale input size, machine, compiler, command, and result must be recorded from that run and kept separate from this memory-only measurement.
+
+The individual derivation and run record for Aashish Sharma (250041001) is in [`docs/derivations/D7_250041001.pdf`](docs/derivations/D7_250041001.pdf).
+
+## 13. Limitations
 
 - These results represent one Windows machine and one seed across a matrix of synthetic traces. Use multiple seeds and randomized case order on the grading machine to estimate sensitivity to trace and run order.
 - The widest matched batches have only 100–1,600 operations. Use the million-query rows to compare the indexed structures at those widths. The short matched batches provide the bounded comparison with the literal array.
 - The profiler attempt yielded no cache data. Repeat selected query and update traces with permitted hardware counters before attributing timing differences to cache misses.
-- **D7 memory model (theoretical; measured data pending).** Let $n$ be the number of elements and $\operatorname{cap}$ the smallest power of two at least $n$. `Value` is `int64_t` (8 bytes); `MaxCount` contains a `Value` and a `uint64_t` count (nominally 16 bytes; the reporter records the compiler's actual `sizeof`). The segment-tree class stores $2\operatorname{cap}$ summaries and $n$ raw values, so its vector-payload model is $2\operatorname{cap}\cdot\operatorname{sizeof}(T)+n\cdot\operatorname{sizeof}(Value)$. This gives separate models for the max-count tree and GCD tree. Structure B stores three $(n+1)$-element `Value` vectors. The sensor application keeps separate readings and calibration inputs; those input buffers are counted separately from structure-owned arrays. The reporter compares these logical-size models with vector-capacity payload and reports whole-process peak memory in a separate row. The process row includes all reporter variants at once and is not a per-structure footprint. See `bench/memory_footprint.cpp` and `bench/run_memory.py`; insert the measured CSV and environment data from `results/raw/memory_footprint.csv` and `results/raw/memory_footprint.environment.json` after the hosted run succeeds.
-
-  At $n=1{,}000{,}000$, $\operatorname{cap}=1{,}048{,}576$. The following are theoretical vector-payload estimates only; the readings and calibration input vectors are shown separately.
-
-  | Quantity | Model bytes | Bytes per element |
-  |---|---:|---:|
-  | A max-count tree | 41,554,432 | 41.554432 |
-  | A GCD tree | 24,777,216 | 24.777216 |
-  | A sensor application (both A trees) | 66,331,648 | 66.331648 |
-  | B two-tree range maximum | 24,000,024 | 24.000024 |
-  | Two input vectors | 16,000,000 | 16.000000 |
-  | B plus the separate A GCD tree | 48,777,240 | 48.777240 |
-
-  Each input vector remains separate from these structure figures. The whole-process peak is expected to exceed the sum for one application because the measurement reporter constructs all variants together.
 - The grader's exact command-line format should be confirmed with the Architect before tagging. The stale standalone oracle self-test depends on a missing header. The integrated differential suite covers the tested implementations. [Run instructions](bench/README.md)
 
-## 13. References
+## 14. References
 
 1. P. M. Fenwick, “A new data structure for cumulative frequency tables,” *Software: Practice and Experience*, 24(3), 327–336, 1994.
 2. M. Dima and R. Ceterchi, “Efficient range minimum queries using binary indexed trees,” *Olympiads in Informatics*, 9, 39–44, 2015. [Paper](https://ioinformatics.org/oi/pdf/v9_2015_39_44.pdf)
