@@ -101,7 +101,7 @@ See [bench/README.md](bench/README.md) for options, input generation, CSV schema
 | Width 500,000, queries only | 260.63 ± 12.38 ns/query | 96.05 ± 6.49 ns/query |
 | Width 64, 50% assignments | 228.05 ± 25.13 ns/op | 815.95 ± 186.05 ns/op |
 
-Values are mean ± sample standard deviation across seven trials. See [the full results](REPORT.md#11-results) <!--and [the PDF report](REPORT.pdf)-->
+Values are mean ± sample standard deviation across seven trials. See [the full results](REPORT.md#11-results) and [the PDF report](REPORT.pdf)
  To export both the report and D6 after editing, use `python scripts/export_report.py --chromium PATH_TO_CHROME` with Pandoc installed.
 
 ## Known limitations
