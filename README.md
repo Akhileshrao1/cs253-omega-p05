@@ -16,7 +16,7 @@ Team Omega — CS 253 / MA 253, Spring 2026
 
 ## Summary
 
-The sensor replay answers the maximum, maximum frequency, and calibration GCD over a closed range after point assignments. It uses a generic segment tree with separate max-count and GCD monoids. The benchmark also measures a two-tree Fenwick implementation for range maximum, a prefix-only Fenwick baseline, and the plain-array oracle. See [REPORT.md](REPORT.md) for the measured crossover and the cost of decreases.
+The sensor replay runs the same input with either structure. Structure A uses a generic segment tree with separate max-count and GCD monoids and returns the maximum, its frequency, and the calibration GCD. Structure B uses a two-tree Fenwick implementation and returns the range maximum. The benchmark also measures a prefix-only Fenwick baseline and the plain-array oracle. See [REPORT.md](REPORT.md) for the measured crossover and the cost of decreases.
 
 ## Build and test
 
@@ -32,21 +32,26 @@ python bench/run.py --all --profile quick
 
 ## Quick Start
 
-From the repository root, compile and run the sensor replay demo in Ubuntu or WSL.
+From the repository root on Ubuntu or WSL, build the evaluator and save the sample below as `trace.txt`.
 
 ```bash
-g++ -std=c++17 -Iinclude -I. app/sensor_demo.cpp -o /tmp/sensor-demo && /tmp/sensor-demo
+mkdir -p build
+g++ -std=c++17 -O2 -Iinclude -I. app/sensor_demo.cpp -o build/sensor_demo
+./build/sensor_demo --structure A < trace.txt
+./build/sensor_demo --structure B < trace.txt
 ```
 
-Enter the number of sensors, the initial readings, the initial calibration values,
-and the number of commands. Then enter one command per line. Positions start at
-1, and query ranges include both endpoints.
+### Evaluation interface
+
+Both modes read the positive sensor count, that many initial readings, that many initial calibration values, and a nonnegative command count. Then supply one command per line. Positions start at 1 and query ranges include both endpoints. Readings are signed 64-bit integers with the minimum value reserved. Calibration values range from 0 through 1,000,000,000.
 
 | Sensor demo command | Meaning |
 | --- | --- |
 | `R i x` | Set the reading at position `i` to `x`. |
-| `C i x` | Set the calibration value at position `i` to `x`. |
-| `Q l r` | Print the maximum reading, its count, and the calibration GCD over positions `l` through `r`. |
+| `C i x` | Set the calibration value at position `i` to `x` in A. B validates and consumes the same command. |
+| `Q l r` | Query positions `l` through `r`. A prints `maximum count gcd` and B prints `maximum`. |
+
+Each query prints one output row. Update commands produce no output. Running the evaluator without arguments selects Structure A.
 
 ### Sample input
 
@@ -54,23 +59,33 @@ and the number of commands. Then enter one command per line. Positions start at
 3
 4 9 9
 6 15 21
-5
+7
 Q 1 3
 R 2 2
+Q 1 3
+R 3 3
 Q 1 3
 C 1 10
 Q 1 3
 ```
 
-### Expected output
+### Expected output for Structure A
 
 ```text
 9 2 3
 9 1 3
-9 1 1
+4 1 3
+4 1 1
 ```
 
-Each output row contains `maximum count gcd`. Update commands produce no output.
+### Expected output for Structure B
+
+```text
+9
+9
+4
+4
+```
 
 ## Benchmarks and figures
 
@@ -106,6 +121,6 @@ Values are mean ± sample standard deviation across seven trials. See [the full 
 
 ## Known limitations
 
-The documented application command format is the sensor replay format. Confirm the grader's exact hidden-test invocation before the team tags the release. The former standalone oracle large self-test references an absent helper header. The reproducible million-operation differential suite lives in `bench/benchmark.cpp`.
+The former standalone oracle large self-test references an absent helper header. The reproducible million-operation differential suite lives in `bench/benchmark.cpp`.
 
 See [TOOLS.md](TOOLS.md) for tool use and [REPORT.md](REPORT.md#13-references) for references.
