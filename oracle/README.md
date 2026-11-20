@@ -35,8 +35,8 @@ Arguments are `n`, operation count and seed, in that order. This runs one millio
 ### 3. Differential test against Structure A and B
 
 ```bash
-g++ -std=c++17 -O2 -Wall -Wextra -pedantic \\
-  oracle/oracle.cpp oracle/differential_test.cpp \\
+g++ -std=c++17 -O2 -Wall -Wextra -pedantic \
+  oracle/oracle.cpp oracle/differential_test.cpp \
   oracle/oracle_differential_selftest.cpp -o oracle_differential_selftest
 ./oracle_differential_selftest 1000000 1000000 20261118
 ```
@@ -68,7 +68,7 @@ The concrete `PrefixMaxFenwick` baseline is present at `src/structB/prefix_max_f
 
 Assignments are checked immediately by reading the assigned position back from both the candidate and Oracle. Build exceptions and size mismatches are reported before replay; their reproducer is an empty operation sequence because no operation caused the failure.
 
-For operation failures, the self-test reducer rebuilds from the same initial array and accepts a reduced sequence only when it reproduces the original failure message/class. This prevents a query mismatch from being reported as a smaller, unrelated invariant failure. Preserve the seed and initial array with a minimized sequence for reproducibility.
+For operation failures, the self-test reducer rebuilds from the same initial array and accepts a reduced sequence only when it reproduces the original specific failure reason (including the invariant identifier where applicable). This prevents a query mismatch from being reported as a smaller, unrelated invariant failure. Preserve the seed and initial array with a minimized sequence for reproducibility.
 
 ## Generator and domain
 
