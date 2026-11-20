@@ -62,7 +62,7 @@ This is the expected success format, not a recorded run result. Record the actua
 
 ## Prefix maximum
 
-The `PrefixMax` differential overload is implemented. A concrete `PrefixMaxFenwick` implementation is not currently present in the repository, so it is not included in the compiled integration self-test. Add it when that implementation is available.
+The concrete `PrefixMaxFenwick` baseline is present at `src/structB/prefix_max_fenwick.hpp`. It implements prefix-maximum queries and point assignments, including decreases by recomputing affected Fenwick blocks. It is exercised by the benchmark/adversary workflow, but is not currently integrated as a candidate in `oracle_differential_selftest.cpp`. That self-test currently covers Structure A MaxCount, Structure A GCD and Structure B Dima–Ceterchi maximum.
 
 ## Failure handling and shrinking
 
