@@ -47,7 +47,7 @@ The three test streams use seeds `20261118`, `20261119` and `20261120` respectiv
 - Structure A `SegTree<GcdMonoid>` against `OracleGcd`.
 - Structure B `DimaCeterchiMax` against the maximum projection of `OracleMaxCount`.
 
-Each stream has one million operations by default in the command above. Assignments include increases and decreases; queries include short ranges and valid empty ranges. Point reads and query results are compared after each operation. Full invariant checks are periodic (at least every 1000 operations, and scaled for very large arrays) and always run after the final operation.
+Each stream has one million operations by default in the command above. Assignments include increases and decreases; queries include short ranges and valid empty ranges. Point reads and query results are compared after each operation. The self-test checks full invariants every max(1000, n / 10) operations and after the final operation.
 
 Expected successful output:
 
