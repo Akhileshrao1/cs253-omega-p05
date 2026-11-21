@@ -163,6 +163,8 @@ Timing summaries below use the arithmetic mean ± sample standard deviation acro
 
 **Figure 1.** Mean matched-query time by width on log axes, with min–max bars across seven trials. The array is competitive for narrow ranges and pays for every scanned element. The shortest wide-range batches have visibly higher relative spread. Data [E1](results/raw/E1.csv) and [E6](results/raw/E6.csv), plotted by `results/plot.py`.
 
+Figure 1 varies the inclusive query width $w=r-l+1$ on an array of fixed size $n=10^6$. A straight line on these log–log axes would represent a power law in $w$. The $O(\log n)$ prediction bounds worst-case query work as the array size grows. Figure 5 varies $n$ and compares the measured node counts with that prediction.
+
 | Range-max workload | Segment tree, ns/query | Two-tree Fenwick, ns/query | Array, ns/query |
 | --- | ---: | ---: | ---: |
 | Width 1, 1,000,000 queries | 50.52 ± 6.82 | 27.83 ± 5.92 | 21.78 ± 4.13 |
@@ -172,7 +174,24 @@ Timing summaries below use the arithmetic mean ± sample standard deviation acro
 | Width 500,000, 1,000,000 indexed queries | 260.63 ± 12.38 | 96.05 ± 6.49 | See matched batch of 200 |
 | Width 1,000,000, 1,000,000 indexed queries | 17.96 ± 0.67 | 25.18 ± 0.55 | See matched batch of 100 |
 
-By mean time, the oracle-to-tree crossover lies between the tested widths 8 and 64. At width 500,000 the two-tree Fenwick was about **2.7× faster** than the segment tree on the million-query trace. It also won at widths 1, 64 and 62,500. Both structures handled width 8 with overlapping spread. The segment tree won at full width with 7 canonical reads, while B used 26. The full-width query repeatedly uses one endpoint pair. At half width, B won with slightly more logical reads (19.95 versus 18.95). The implementations use different traversal loops and different aggregate payloads. The timings cannot isolate their individual effects.
+#### Why the dip at around $10^6$ operations?
+
+*This dip is not what the log(n) therectical calculation preditcted, and devites from the trend of the graph precedin till $10^5$ width.*
+
+By mean time, the oracle-to-tree crossover lies between the tested widths 8 and 64. At width 500,000 the two-tree Fenwick was about **2.7× faster** than the segment tree on the million-query trace. It also won at widths 1, 64 and 62,500. Both structures handled width 8 with overlapping spread. At half width, B won with slightly more logical reads (19.95 versus 18.95). The implementations use different traversal loops and different aggregate payloads. The timings cannot isolate their individual effects.
+
+At width 500,000, the range-query generator samples from 500,001 possible starting positions. At width $10^6$, the only possible range is `[1, 1000000]`, so every query follows the same traversal. The segment tree won at full width, where the aligned range decomposes into seven precomputed blocks and the query reads seven nodes. B's full-width traversal uses 26 reads including the final raw value, up from 19.95 at half width. Both drops in time persist in the equal-length million-query batches above. In the right panel, each width already repeats one fixed prefix. [Workload generator](bench/workloads.hpp#L141-L145) · [E1 summary](results/summary.csv)
+
+A follow-up control replayed the first 1,000 queries from the seeded half-width trace 1,000 times each. Both batches contained the same one million queries. One batch grouped repetitions of each query and the other shuffled them. The two orders produced the same checksum and the same read and combine totals. Median times over seven measured runs were:
+
+| Structure | `-O3` shuffled → grouped, ns/query | `-O0` shuffled → grouped, ns/query |
+| --- | ---: | ---: |
+| Segment tree | 81.61 → 21.68 | 429.68 → 266.42 |
+| Two-tree Fenwick | 36.16 → 13.13 | 369.42 → 207.61 |
+
+All widths in Figure 1 used the same `g++ -O3` build. Both the grouping speedup and the full-width dip also appeared at `-O0`. Grouping made the same logical work faster even at `-O0`, consistent with CPU cache reuse and branch prediction during repeated traversals.
+
+In the follow-up runs, the ratio of median time for random half-width queries to median time for repeated full-width queries rose from **6.0× at `-O0` to 8.6× at `-O3`** for the segment tree and from **2.1× to 4.5×** for the two-tree Fenwick. The larger ratios suggest that `g++` optimization amplified the speedup in this run. The timings do not isolate the effects of cache reuse, branch prediction, or individual compiler optimizations. [Timing loop](bench/benchmark.cpp#L235-L255) · [Benchmark environment](results/environment.json)
 
 ![Time versus the fraction of assignments for range and prefix maximum](results/figures/update_mix.png)
 
