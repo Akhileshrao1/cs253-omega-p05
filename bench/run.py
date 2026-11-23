@@ -120,10 +120,36 @@ def smoke_tests(compiler):
         binary = compile_program(compiler, Path(files[0]).stem, files, flags)
         subprocess.run([str(binary)], cwd=ROOT, check=True)
     app = compile_program(compiler, "sensor_demo", ["app/sensor_demo.cpp"], flags)
-    demo = "3\n4 9 9\n6 15 21\n5\nQ 1 3\nR 2 2\nQ 1 3\nC 1 10\nQ 1 3\n"
-    executed = subprocess.run([str(app)], input=demo, capture_output=True, text=True, check=True)
-    if executed.stdout != "9 2 3\n9 1 3\n9 1 1\n":
-        raise RuntimeError(f"Unexpected sensor demo output: {executed.stdout!r}")
+    sensor_input = "3\n4 9 9\n6 15 21\n"
+    demo = sensor_input + (
+        "8\nQ 1 0\nQ 1 3\n"
+        "R 2 2\nQ 2 1\nQ 1 3\n"
+        "C 1 10\nQ 4 3\nQ 1 3\n"
+    )
+    empty_max = "-9223372036854775808"
+    empty_a = f"{empty_max} 0 0"
+    expected_a = [empty_a, "9 2 3", empty_a, "9 1 3", empty_a, "9 1 1"]
+    expected_b = [empty_max, "9", empty_max, "9", empty_max, "9"]
+    for arguments, expected in (
+        ([], expected_a),
+        (["--structure", "A"], expected_a),
+        (["--structure", "B"], expected_b),
+    ):
+        command = [str(app), *arguments]
+        result = subprocess.run(command, input=demo, capture_output=True, text=True, check=True)
+        if result.stdout != "\n".join(expected) + "\n":
+            raise RuntimeError(f"{command} produced unexpected query output: {result.stdout!r}")
+        for query in ("Q 3 1", "Q 0 0", "Q 5 4", "Q 1 -1"):
+            result = subprocess.run(command, input=f"{sensor_input}1\n{query}\n",
+                                    capture_output=True, text=True)
+            if result.returncode != 1 or result.stdout:
+                raise RuntimeError(f"{command} did not reject {query!r} cleanly")
+
+    checker = compile_program(compiler, "check_input", ["adversary/check_input.cpp"], flags)
+    with tempfile.TemporaryDirectory() as directory:
+        trace = Path(directory) / "sensor.trace"
+        trace.write_text(demo, encoding="utf-8")
+        subprocess.run([str(checker), "--in", str(trace)], capture_output=True, check=True)
     print("Smoke tests and sensor demo passed.", flush=True)
 
 

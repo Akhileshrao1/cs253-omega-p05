@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <iostream>
 #include <stdexcept>
 #include <string_view>
@@ -102,9 +103,9 @@ static int replay(bool use_structure_b)
 
         case 'Q':
         {
-            Index left, right;
+            std::int64_t left, right;
             if (!(std::cin >> left >> right) ||
-                left == 0 || left > right || right > readings.size())
+                left < 1 || right > sensor_count || left - 1 > right)
             {
                 return 1;
             }
