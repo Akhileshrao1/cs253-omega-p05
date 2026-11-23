@@ -49,7 +49,7 @@ inline Instance read_instance(const std::string& path) {
             if (t == 'C' && (y < 0 || y > VALUE_MAX)) die(at + ": calibration value out of range 0..1e9");
             if (t == 'R' && y == INT64_MIN) die(at + ": INT64_MIN is reserved");
         } else if (t == 'Q') {
-            if (x < 1 || y > n || x > y) die(at + ": bad query range");
+            if (x < 1 || y > n || x - 1 > y) die(at + ": bad query range");
         } else {
             die(at + ": unknown command '" + std::string(1, t) + "'");
         }

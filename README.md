@@ -71,6 +71,8 @@ Both modes read the positive sensor count, that many initial readings, that many
 
 Each query prints one output row. Update commands produce no output. Running the evaluator without arguments selects Structure A.
 
+For $n$ sensors, a nonempty query satisfies $1 \le l \le r \le n$. An empty query has $l = r + 1$ and $0 \le r \le n$. With three sensors, for example, `Q 1 0`, `Q 2 1`, and `Q 4 3` are valid empty queries. For each one, A prints `-9223372036854775808 0 0` and B prints `-9223372036854775808`. This minimum signed 64-bit value is the identity for maximum.
+
 ### Sample input
 
 ```text
